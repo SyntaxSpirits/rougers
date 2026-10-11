@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 - Unreleased
+## 0.2.0 - 2026-10-11
 
 - `UnicodeTokenizer` (profile `unicode-v1`): Unicode word boundaries after NFKC and full
   case folding, for languages in any script.
