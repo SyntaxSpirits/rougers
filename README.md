@@ -9,9 +9,9 @@ ROUGE metrics in Rust, with scores identical to Google's
 [`rouge-score`](https://pypi.org/project/rouge-score/), about 30 times faster on one core
 and over 100 times faster on all of them.
 
-`rouge-score` is the reference implementation behind Hugging Face `evaluate`, most
-summarization papers and many LLM evaluation pipelines. It is written in pure Python
-and becomes the bottleneck once you score tens of thousands of outputs. `rougers`
+`rouge-score` is the ROUGE implementation behind Hugging Face `evaluate` and many
+summarization and LLM evaluation pipelines. It is written in pure Python, so scoring large
+sets of outputs, or scoring repeatedly, takes noticeable time. `rougers`
 reproduces it exactly, down to the last bit of every float, including the tokenizer,
 NLTK's Porter stemmer and the summary-level `rougeLsum`.
 
