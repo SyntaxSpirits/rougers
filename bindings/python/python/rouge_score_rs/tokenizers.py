@@ -2,7 +2,7 @@
 
 import abc
 
-from rougers import _native, _rougers
+from rouge_score_rs import _native, _rougers
 
 
 class Tokenizer(abc.ABC):

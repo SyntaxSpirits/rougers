@@ -12,7 +12,7 @@ fn rows(scores: Scores) -> Vec<ScoreRow> {
         .collect()
 }
 
-#[pyclass(frozen, module = "rougers._rougers")]
+#[pyclass(frozen, module = "rouge_score_rs._rougers")]
 struct Scorer {
     inner: RougeScorer,
 }

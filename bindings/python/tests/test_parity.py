@@ -15,7 +15,7 @@ from rouge_score import rouge_scorer as reference
 from rouge_score import scoring as reference_scoring
 from rouge_score import tokenize as reference_tokenize
 
-from rougers import rouge_scorer, scoring, tokenize, tokenizers
+from rouge_score_rs import rouge_scorer, scoring, tokenize, tokenizers
 
 ALL_TYPES = ["rouge1", "rouge2", "rouge3", "rouge4", "rougeL", "rougeLsum"]
 DICTIONARY = Path("/usr/share/dict/words")

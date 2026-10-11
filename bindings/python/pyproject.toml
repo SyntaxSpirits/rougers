@@ -3,8 +3,8 @@ requires = ["maturin>=1.9,<2"]
 build-backend = "maturin"
 
 [project]
-name = "rougers"
-description = "Fast drop-in replacement for rouge-score, written in Rust"
+name = "rouge-score-rs"
+description = "Fast ROUGE scoring for Python: an independent Rust implementation compatible with rouge-score"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
@@ -34,7 +34,7 @@ dev = ["pytest", "hypothesis", "rouge-score", "nltk", "numpy"]
 
 [tool.maturin]
 python-source = "python"
-module-name = "rougers._rougers"
+module-name = "rouge_score_rs._rougers"
 features = ["pyo3/extension-module"]
 
 [tool.pytest.ini_options]
@@ -48,4 +48,4 @@ target-version = "py39"
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["rougers"]
+known-first-party = ["rouge_score_rs"]

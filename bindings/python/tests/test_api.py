@@ -1,7 +1,7 @@
 import pytest
 
-import rougers
-from rougers import rouge_scorer, scoring, tokenizers
+import rouge_score_rs
+from rouge_score_rs import rouge_scorer, scoring, tokenizers
 
 
 def test_readme_example():
@@ -15,9 +15,9 @@ def test_readme_example():
 
 
 def test_top_level_exports():
-    assert rougers.RougeScorer is rouge_scorer.RougeScorer
-    assert rougers.Score is scoring.Score
-    assert rougers.__version__
+    assert rouge_score_rs.RougeScorer is rouge_scorer.RougeScorer
+    assert rouge_score_rs.Score is scoring.Score
+    assert rouge_score_rs.__version__
 
 
 @pytest.mark.parametrize("rouge_type", ["rougen", "rouge0", "rouge10", "bleu"])
