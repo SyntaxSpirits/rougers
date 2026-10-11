@@ -1,0 +1,24 @@
+[package]
+name = "rougers"
+description = "Fast ROUGE metrics with scores identical to Google's rouge-score"
+readme = "../../README.md"
+documentation = "https://docs.rs/rougers"
+keywords = ["rouge", "nlp", "summarization", "evaluation", "metrics"]
+categories = ["text-processing", "science"]
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+rustc-hash = "2.1"
+
+[dev-dependencies]
+criterion = "0.8"
+
+[[bench]]
+name = "scorer"
+harness = false

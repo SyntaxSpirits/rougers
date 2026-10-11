@@ -1,0 +1,19 @@
+[package]
+name = "rougers-python"
+description = "Python bindings for rougers"
+publish = false
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "_rougers"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.29", features = ["abi3-py39"] }
+rayon = "1.12"
+rougers = { path = "../../crates/rougers" }

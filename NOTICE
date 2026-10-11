@@ -1,0 +1,8 @@
+rougers
+Copyright 2026 Alex Kholodniak
+
+This product includes a Rust port of the scoring and tokenization logic of
+rouge-score (https://github.com/google-research/google-research/tree/master/rouge),
+Copyright 2022 The rouge_score Authors, licensed under the Apache License 2.0,
+and of the Porter stemmer from NLTK (https://github.com/nltk/nltk),
+Copyright (C) 2001-2026 NLTK Project, licensed under the Apache License 2.0.
