@@ -9,9 +9,9 @@ ROUGE metrics in Rust, with scores identical to Google's
 [`rouge-score`](https://pypi.org/project/rouge-score/), about 30 times faster on one core
 and over 100 times faster on all of them.
 
-`rouge-score` is the reference implementation behind Hugging Face `evaluate`, most
-summarization papers and many LLM evaluation pipelines. It is written in pure Python
-and becomes the bottleneck once you score tens of thousands of outputs. `rougers`
+`rouge-score` is the ROUGE implementation behind Hugging Face `evaluate` and many
+summarization and LLM evaluation pipelines. It is written in pure Python, so scoring large
+sets of outputs, or scoring repeatedly, takes noticeable time. `rougers`
 reproduces it exactly, down to the last bit of every float, including the tokenizer,
 NLTK's Porter stemmer and the summary-level `rougeLsum`.
 
@@ -52,6 +52,21 @@ results = scorer.score_batch(references, predictions)  # list of dicts, one per 
 Set `RAYON_NUM_THREADS` to limit the number of threads. With a custom tokenizer or
 `split_summaries=True`, and in a process forked after a parallel call, pairs are scored
 one by one.
+
+## Hugging Face Evaluate
+
+The [`SyntaxSpirits/rouge`](https://huggingface.co/spaces/SyntaxSpirits/rouge) metric has
+the same inputs, options and scores as Evaluate's built-in `rouge` metric and computes them
+with this package:
+
+```python
+import evaluate
+
+rouge = evaluate.load("SyntaxSpirits/rouge")  # was: evaluate.load("rouge")
+results = rouge.compute(predictions=predictions, references=references)
+```
+
+It needs `pip install evaluate 'rouge-score-rs[aggregate]>=0.1.1'`.
 
 ## Rust
 
