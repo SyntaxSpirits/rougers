@@ -15,6 +15,10 @@ def tokenize(text, stemmer):
     """
     tokens = _native.call(_rougers.tokenize, text, False)
     if stemmer:
-        tokens = [stemmer.stem(x) if len(x) > 3 else x for x in tokens]
+        tokens = [_text(stemmer.stem(x)) if len(x) > 3 else x for x in tokens]
         tokens = [x for x in tokens if VALID_TOKEN_RE.match(x)]
     return tokens
+
+
+def _text(value):
+    return value.decode("utf-8") if isinstance(value, bytes) else value

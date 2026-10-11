@@ -42,13 +42,16 @@ scores["rouge1"]
 `tokenize.tokenize` work the same way as in `rouge-score`, and scorers can be pickled
 for use in worker processes.
 
-To score many pairs, use `score_batch`. It runs on all CPU cores and releases the GIL:
+To score many pairs, use `score_batch`. With the default tokenizer it runs on all CPU
+cores and releases the GIL:
 
 ```python
 results = scorer.score_batch(references, predictions)  # list of dicts, one per pair
 ```
 
-Set `RAYON_NUM_THREADS` to limit the number of threads.
+Set `RAYON_NUM_THREADS` to limit the number of threads. With a custom tokenizer or
+`split_summaries=True`, and in a process forked after a parallel call, pairs are scored
+one by one.
 
 ## Rust
 

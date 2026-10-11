@@ -18,7 +18,8 @@ ROUGE_TYPES = ["rouge1", "rouge2", "rougeL", "rougeLsum"]
 
 
 def load_pairs(count, seed):
-    nltk.download("gutenberg", quiet=True)
+    for resource in ("gutenberg", "punkt_tab"):
+        nltk.download(resource, quiet=True, raise_on_error=True)
     sentences = [" ".join(words) for words in nltk.corpus.gutenberg.sents()]
     sentences = [s for s in sentences if 5 <= len(s.split()) <= 40]
     rng = random.Random(seed)

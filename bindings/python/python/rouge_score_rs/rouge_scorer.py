@@ -25,7 +25,7 @@ class RougeScorer(scoring.BaseScorer):
         self.rouge_types = rouge_types
         self._split_summaries = split_summaries
         self._tokenizer = tokenizer or tokenizers.DefaultTokenizer(use_stemmer)
-        self._scorer_types = None
+        self._scorer_key = None
         self._scorer = None
         self._native_scorer()
 
@@ -57,11 +57,13 @@ class RougeScorer(scoring.BaseScorer):
         return result
 
     def score_batch(self, targets, predictions):
-        """Scores pairs of targets and predictions in parallel.
+        """Scores pairs of targets and predictions, which must have equal length.
 
-        Equivalent to ``[self.score(t, p) for t, p in zip(targets, predictions)]``
-        but runs on all CPU cores without holding the GIL. The thread count can
-        be limited with the ``RAYON_NUM_THREADS`` environment variable.
+        Returns the same as ``[self.score(t, p) for t, p in zip(targets, predictions)]``.
+        With the default tokenizer and ``split_summaries=False`` the pairs are
+        scored on all CPU cores without holding the GIL; the thread count can be
+        limited with the ``RAYON_NUM_THREADS`` environment variable. Otherwise,
+        and in a process forked after a parallel call, pairs are scored one by one.
         """
         targets = list(targets)
         predictions = list(predictions)
@@ -74,18 +76,12 @@ class RougeScorer(scoring.BaseScorer):
             return [_scores(r) for r in rows]
         return [self.score(t, p) for t, p in zip(targets, predictions)]
 
-    def __getstate__(self):
-        state = self.__dict__.copy()
-        state["_scorer_types"] = None
-        state["_scorer"] = None
-        return state
-
     def _native_scorer(self):
-        rouge_types = tuple(self.rouge_types)
-        if rouge_types != self._scorer_types:
-            stemmer = self._tokenizer.use_stemmer if self._has_default_tokenizer() else False
-            self._scorer = _rougers.Scorer(list(rouge_types), stemmer)
-            self._scorer_types = rouge_types
+        stemmer = self._tokenizer.use_stemmer if self._has_default_tokenizer() else False
+        key = (tuple(self.rouge_types), stemmer)
+        if key != self._scorer_key:
+            self._scorer = _rougers.Scorer(list(key[0]), stemmer)
+            self._scorer_key = key
         return self._scorer
 
     def _has_default_tokenizer(self):
@@ -95,7 +91,8 @@ class RougeScorer(scoring.BaseScorer):
         return self._has_default_tokenizer() and not self._split_summaries
 
     def _scores_natively(self):
-        return self._tokenizes_natively() and type(self).score is RougeScorer.score
+        score = getattr(self.score, "__func__", None)
+        return self._tokenizes_natively() and score is RougeScorer.score
 
     def _score_with_tokenizer(self, scorer, target, prediction):
         tokenize = self._tokenizer.tokenize

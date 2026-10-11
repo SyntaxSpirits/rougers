@@ -14,6 +14,7 @@ from nltk.stem import porter
 from rouge_score import rouge_scorer as reference
 from rouge_score import scoring as reference_scoring
 from rouge_score import tokenize as reference_tokenize
+from rouge_score import tokenizers as reference_tokenizers
 
 from rouge_score_rs import rouge_scorer, scoring, tokenize, tokenizers
 
@@ -330,3 +331,56 @@ def test_lcs_ind():
         ref = [rng.choice("abc") for _ in range(rng.randint(0, 8))]
         can = [rng.choice("abc") for _ in range(rng.randint(0, 8))]
         assert rouge_scorer.lcs_ind(ref, can) == reference.lcs_ind(ref, can)
+
+
+class SlottedOurs(rouge_scorer.RougeScorer):
+    __slots__ = ("label",)
+
+
+class SlottedTheirs(reference.RougeScorer):
+    __slots__ = ("label",)
+
+
+def test_pickle_keeps_subclass_slots():
+    import copy
+    import pickle
+
+    for cls in (SlottedOurs, SlottedTheirs):
+        scorer = cls(["rouge1"], use_stemmer=True)
+        scorer.label = "keep"
+        for clone in (pickle.loads(pickle.dumps(scorer)), copy.deepcopy(scorer)):
+            assert clone.label == "keep"
+            assert clone.score("the cats", "a cat")["rouge1"].fmeasure == 0.5
+
+
+def test_changing_tokenizer_stemming_after_construction():
+    ours_tokenizer, theirs_tokenizer = (
+        tokenizers.DefaultTokenizer(),
+        reference_tokenizers.DefaultTokenizer(),
+    )
+    ours = rouge_scorer.RougeScorer(["rouge1"], tokenizer=ours_tokenizer)
+    theirs = reference.RougeScorer(["rouge1"], tokenizer=theirs_tokenizer)
+    ours_tokenizer.use_stemmer = True
+    theirs_tokenizer._stemmer = porter.PorterStemmer()
+    assert as_tuples(ours.score("running", "runs")) == as_tuples(theirs.score("running", "runs"))
+    assert ours.score_batch(["running"], ["runs"]) == [ours.score("running", "runs")]
+
+
+def test_instance_level_score_override():
+    def zero(target, prediction):
+        return {"rouge1": scoring.Score(0.0, 0.0, 0.0)}
+
+    ours, theirs = both(["rouge1"])
+    ours.score = theirs.score = zero
+    assert ours.score_multi(["a"], "a") == theirs.score_multi(["a"], "a")
+    assert ours.score_batch(["a"], ["a"]) == [zero("a", "a")]
+
+
+def test_tokenize_accepts_bytes_from_stemmer():
+    class BytesStemmer:
+        def stem(self, word):
+            return word.encode()
+
+    assert tokenize.tokenize("running cats", BytesStemmer()) == reference_tokenize.tokenize(
+        "running cats", BytesStemmer()
+    )
