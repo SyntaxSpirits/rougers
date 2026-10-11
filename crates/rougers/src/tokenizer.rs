@@ -112,6 +112,14 @@ pub(crate) struct Tokens {
 }
 
 impl Tokens {
+    /// Room for the tokens of a text of `bytes` bytes without reallocating.
+    pub(crate) fn with_capacity(bytes: usize) -> Self {
+        Tokens {
+            text: String::with_capacity(bytes),
+            ends: Vec::with_capacity(bytes / 4 + 1),
+        }
+    }
+
     pub(crate) fn len(&self) -> usize {
         self.ends.len()
     }
@@ -170,6 +178,13 @@ fn rouge_score_tokens(text: &str, use_stemmer: bool, tokens: &mut Tokens) {
             finish_token(tokens, use_stemmer, &mut stem_buffer);
         }
     };
+    if text.is_ascii() {
+        for &byte in text.as_bytes() {
+            push(char::from(byte.to_ascii_lowercase()), tokens);
+        }
+        finish_token(tokens, use_stemmer, &mut stem_buffer);
+        return;
+    }
     for ch in text.chars() {
         if ch.is_ascii() {
             push(ch.to_ascii_lowercase(), tokens);

@@ -135,8 +135,17 @@ impl RougeScorer {
         let mut vocabulary = Vocabulary::default();
         let target_tokens = vocabulary.intern(target.tokens.iter().map(String::as_str));
         let prediction_tokens = vocabulary.intern(prediction.tokens.iter().map(String::as_str));
-        let target_sentences = vocabulary.intern_sentences(&target.sentences);
-        let prediction_sentences = vocabulary.intern_sentences(&prediction.sentences);
+        let lsum = self.rouge_types.contains(&RougeType::LSum);
+        let target_sentences = if lsum {
+            vocabulary.intern_sentences(&target.sentences)
+        } else {
+            Vec::new()
+        };
+        let prediction_sentences = if lsum {
+            vocabulary.intern_sentences(&prediction.sentences)
+        } else {
+            Vec::new()
+        };
         self.score_ids(
             Encoded::new(&target_tokens, &target_sentences),
             Encoded::new(&prediction_tokens, &prediction_sentences),
@@ -148,7 +157,7 @@ impl RougeScorer {
     /// `rougeLsum` is requested. A newline always separates tokens, so the
     /// tokens of the whole text are the concatenation of those of its lines.
     fn tokens(&self, text: &str) -> TokenizedText {
-        let mut tokens = Tokens::default();
+        let mut tokens = Tokens::with_capacity(text.len());
         let mut sentences = Vec::new();
         if self.rouge_types.contains(&RougeType::LSum) {
             for line in text.split('\n').filter(|line| !line.is_empty()) {
@@ -163,7 +172,8 @@ impl RougeScorer {
     }
 
     fn score_tokenized(&self, target: &TokenizedText, prediction: &TokenizedText) -> Scores {
-        let mut vocabulary = Vocabulary::default();
+        let mut vocabulary =
+            Vocabulary::with_capacity(target.tokens.len() + prediction.tokens.len());
         let target_ids = vocabulary.intern(target.tokens.iter());
         let prediction_ids = vocabulary.intern(prediction.tokens.iter());
         let target_sentences = slices(&target_ids, &target.sentences);
@@ -258,6 +268,12 @@ struct Vocabulary<'a> {
 }
 
 impl<'a> Vocabulary<'a> {
+    fn with_capacity(tokens: usize) -> Self {
+        Vocabulary {
+            ids: FxHashMap::with_capacity_and_hasher(tokens, Default::default()),
+        }
+    }
+
     fn intern(&mut self, tokens: impl Iterator<Item = &'a str>) -> Vec<u32> {
         tokens
             .map(|token| {

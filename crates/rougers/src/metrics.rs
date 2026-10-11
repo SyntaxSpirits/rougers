@@ -18,7 +18,7 @@ pub(crate) fn rouge_n(target: &[u32], prediction: &[u32], n: usize, vocabulary: 
 /// The sum over distinct unigrams of min(target count, prediction count),
 /// with counts in a dense array indexed by token id.
 fn unigram_overlap(target: &[u32], prediction: &[u32], vocabulary: usize) -> usize {
-    let mut counts = vec![0u32; vocabulary];
+    let mut counts = vec![0usize; vocabulary];
     for &token in target {
         counts[token as usize] += 1;
     }
@@ -44,7 +44,8 @@ fn clipped_overlap<K: std::hash::Hash + Eq>(
     target: impl Iterator<Item = K>,
     prediction: impl Iterator<Item = K>,
 ) -> usize {
-    let mut counts: FxHashMap<K, u32> = FxHashMap::default();
+    let mut counts: FxHashMap<K, usize> =
+        FxHashMap::with_capacity_and_hasher(target.size_hint().0, Default::default());
     for ngram in target {
         *counts.entry(ngram).or_insert(0) += 1;
     }
@@ -72,6 +73,10 @@ pub(crate) fn rouge_l(target: &[u32], prediction: &[u32], vocabulary: usize) -> 
     Score::from_counts(lcs, prediction.len(), target.len())
 }
 
+/// Above this many 64-bit mask words the bit-parallel LCS falls back to the
+/// linear-memory table (8 MiB).
+const MAX_MASK_WORDS: usize = 1 << 20;
+
 /// LCS length with the bit-parallel algorithm of Hyyrö (2004): one bit per
 /// position of the shorter sequence, 64 positions per machine word. A zero bit
 /// marks a position where the LCS grew, so the length is the number of zeros.
@@ -79,22 +84,36 @@ fn lcs_length(a: &[u32], b: &[u32], vocabulary: usize) -> usize {
     let (pattern, text) = if a.len() <= b.len() { (a, b) } else { (b, a) };
     let words = pattern.len().div_ceil(64);
 
-    // Match masks for the tokens that occur in the pattern, one row each.
-    let mut row_of = vec![u32::MAX; vocabulary];
-    let mut masks: Vec<u64> = Vec::new();
-    for (i, &token) in pattern.iter().enumerate() {
+    // One row of match masks per token that occurs in both sequences.
+    const ABSENT: u32 = u32::MAX;
+    const IN_TEXT: u32 = u32::MAX - 1;
+    let mut row_of = vec![ABSENT; vocabulary];
+    for &token in text {
+        row_of[token as usize] = IN_TEXT;
+    }
+    let mut rows = 0usize;
+    for &token in pattern {
         let row = &mut row_of[token as usize];
-        if *row == u32::MAX {
-            *row = (masks.len() / words) as u32;
-            masks.resize(masks.len() + words, 0);
+        if *row == IN_TEXT {
+            *row = rows as u32;
+            rows += 1;
         }
-        masks[*row as usize * words + i / 64] |= 1 << (i % 64);
+    }
+    if rows * words > MAX_MASK_WORDS {
+        return lcs_length_by_table(a, b);
+    }
+    let mut masks = vec![0u64; rows * words];
+    for (i, &token) in pattern.iter().enumerate() {
+        let row = row_of[token as usize];
+        if row < IN_TEXT {
+            masks[row as usize * words + i / 64] |= 1 << (i % 64);
+        }
     }
 
     let mut v = vec![u64::MAX; words];
     for &token in text {
         let row = row_of[token as usize];
-        if row == u32::MAX {
+        if row >= IN_TEXT {
             continue;
         }
         let mask = &masks[row as usize * words..][..words];
@@ -111,6 +130,24 @@ fn lcs_length(a: &[u32], b: &[u32], vocabulary: usize) -> usize {
     // Bits above the pattern length start as ones and never match, so they
     // stay ones and add no zeros.
     v.iter().map(|word| word.count_zeros() as usize).sum()
+}
+
+/// LCS length by the classic dynamic programming table, two rows at a time.
+fn lcs_length_by_table(a: &[u32], b: &[u32]) -> usize {
+    let (rows, cols) = if a.len() >= b.len() { (a, b) } else { (b, a) };
+    let mut previous = vec![0usize; cols.len() + 1];
+    let mut current = vec![0usize; cols.len() + 1];
+    for &x in rows {
+        for (j, &y) in cols.iter().enumerate() {
+            current[j + 1] = if x == y {
+                previous[j] + 1
+            } else {
+                previous[j + 1].max(current[j])
+            };
+        }
+        std::mem::swap(&mut previous, &mut current);
+    }
+    previous[cols.len()]
 }
 
 /// Summary-level LCS (section 3.2 of Lin, 2004) with the clipped hit
@@ -239,22 +276,6 @@ mod tests {
             .collect()
     }
 
-    fn lcs_by_table(a: &[u32], b: &[u32]) -> usize {
-        let mut previous = vec![0usize; b.len() + 1];
-        let mut current = vec![0usize; b.len() + 1];
-        for &x in a {
-            for (j, &y) in b.iter().enumerate() {
-                current[j + 1] = if x == y {
-                    previous[j] + 1
-                } else {
-                    previous[j + 1].max(current[j])
-                };
-            }
-            std::mem::swap(&mut previous, &mut current);
-        }
-        previous[b.len()]
-    }
-
     fn overlap_by_two_maps(a: &[u32], b: &[u32], n: usize) -> usize {
         let counts = |tokens: &[u32]| {
             let mut counts = std::collections::HashMap::new();
@@ -274,10 +295,21 @@ mod tests {
         for (a, b, vocabulary) in sequences(0x9E37_79B9_7F4A_7C15, 2000) {
             assert_eq!(
                 lcs_length(&a, &b, vocabulary),
-                lcs_by_table(&a, &b),
+                lcs_length_by_table(&a, &b),
                 "{a:?} {b:?}"
             );
         }
+    }
+
+    #[test]
+    fn falls_back_to_the_table_for_large_mask_tables() {
+        // 8,200 distinct shared tokens over 8,200 positions need about
+        // 1.06 million mask words, just above the limit.
+        let a: Vec<u32> = (0..8_200).collect();
+        let b: Vec<u32> = (0..8_200).rev().collect();
+        assert_eq!(lcs_length(&a, &b, 8_200), 1);
+        let disjoint: Vec<u32> = (8_200..16_400).collect();
+        assert_eq!(lcs_length(&a, &disjoint, 16_400), 0);
     }
 
     #[test]
