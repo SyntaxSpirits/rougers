@@ -268,9 +268,11 @@ struct Vocabulary<'a> {
 }
 
 impl<'a> Vocabulary<'a> {
+    /// Reserves for at most a few thousand distinct tokens; a repetitive
+    /// text has far fewer distinct tokens than occurrences.
     fn with_capacity(tokens: usize) -> Self {
         Vocabulary {
-            ids: FxHashMap::with_capacity_and_hasher(tokens, Default::default()),
+            ids: FxHashMap::with_capacity_and_hasher(tokens.min(4096), Default::default()),
         }
     }
 

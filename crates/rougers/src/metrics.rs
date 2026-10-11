@@ -45,7 +45,7 @@ fn clipped_overlap<K: std::hash::Hash + Eq>(
     prediction: impl Iterator<Item = K>,
 ) -> usize {
     let mut counts: FxHashMap<K, usize> =
-        FxHashMap::with_capacity_and_hasher(target.size_hint().0, Default::default());
+        FxHashMap::with_capacity_and_hasher(target.size_hint().0.min(4096), Default::default());
     for ngram in target {
         *counts.entry(ngram).or_insert(0) += 1;
     }
@@ -99,7 +99,10 @@ fn lcs_length(a: &[u32], b: &[u32], vocabulary: usize) -> usize {
             rows += 1;
         }
     }
-    if rows * words > MAX_MASK_WORDS {
+    if rows
+        .checked_mul(words)
+        .is_none_or(|mask_words| mask_words > MAX_MASK_WORDS)
+    {
         return lcs_length_by_table(a, b);
     }
     let mut masks = vec![0u64; rows * words];

@@ -4,7 +4,11 @@ __version__: str
 
 class Scorer:
     def __init__(
-        self, rouge_types: list[str], use_stemmer: bool, profile: str, score_class: type
+        self,
+        rouge_types: list[str],
+        use_stemmer: bool,
+        profile: str = "rouge-score",
+        score_class: type | None = None,
     ) -> None: ...
     def score(self, target: str, prediction: str) -> dict[str, Any]: ...
     def score_documents(

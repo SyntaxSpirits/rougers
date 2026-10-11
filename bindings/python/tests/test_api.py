@@ -90,6 +90,42 @@ def test_score_batch_works_after_fork():
         assert pool.apply_async(_score_batch_in_child, (scorer,)).get(timeout=30) == expected
 
 
+# A scorer pickled by rouge-score-rs 0.1.0: RougeScorer(["rouge1", "rougeL"], use_stemmer=True).
+PICKLED_BY_0_1_0 = (
+    "gASV3wAAAAAAAACMG3JvdWdlX3Njb3JlX3JzLnJvdWdlX3Njb3JlcpSMC1JvdWdlU2NvcmVylJOUKYGUfZQojAtyb3VnZV90eXBl"
+    "c5RdlCiMBnJvdWdlMZSMBnJvdWdlTJRljBBfc3BsaXRfc3VtbWFyaWVzlImMCl90b2tlbml6ZXKUjBlyb3VnZV9zY29yZV9ycy50"
+    "b2tlbml6ZXJzlIwQRGVmYXVsdFRva2VuaXplcpSTlCmBlH2UjAt1c2Vfc3RlbW1lcpSIc2KMDV9zY29yZXJfdHlwZXOUTowHX3Nj"
+    "b3JlcpROdWIu"
+)
+
+
+def test_unpickles_scorer_from_0_1_0():
+    import base64
+    import pickle
+
+    restored = pickle.loads(base64.b64decode(PICKLED_BY_0_1_0))
+    fresh = rouge_scorer.RougeScorer(["rouge1", "rougeL"], use_stemmer=True)
+    assert restored.score("the cats ran", "a cat runs") == fresh.score("the cats ran", "a cat runs")
+
+
+def test_native_scorer_does_not_keep_reference_cycles_alive():
+    import gc
+    import weakref
+
+    from rouge_score_rs import _rougers
+
+    class CustomScore(scoring.Score):
+        pass
+
+    native = _rougers.Scorer(["rouge1"], False, score_class=CustomScore)
+    assert type(native.score("a b", "a")["rouge1"]) is CustomScore
+    CustomScore.native = native
+    class_ref = weakref.ref(CustomScore)
+    del CustomScore, native
+    gc.collect()
+    assert class_ref() is None
+
+
 # Scorers pickled by rouge-score-rs 0.2.0.
 PICKLED_BY_0_2_0 = {
     "default_stem": (

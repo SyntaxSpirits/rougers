@@ -86,7 +86,8 @@ class RougeScorer(scoring.BaseScorer):
             key = (tuple(self.rouge_types), self._tokenizer.use_stemmer, self._tokenizer.profile)
         else:
             key = (tuple(self.rouge_types), False, tokenizers.DefaultTokenizer.profile)
-        if key != self._scorer_key:
+        # Scorers pickled by 0.1.0 have no cache key; treat that as an empty cache.
+        if key != getattr(self, "_scorer_key", None):
             self._scorer = _rougers.Scorer(list(key[0]), key[1], key[2], scoring.Score)
             self._scorer_key = key
         return self._scorer

@@ -1,6 +1,7 @@
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyString, PyTuple, PyType};
+use pyo3::{PyTraverseError, PyVisit};
 use rayon::prelude::*;
 use rougers::{Document, RougeScorer, RougeType, Scores, Tokenizer};
 use std::sync::OnceLock;
@@ -67,6 +68,15 @@ impl Scorer {
             names,
             tuple_new,
         })
+    }
+
+    fn __traverse__(&self, visit: PyVisit<'_>) -> Result<(), PyTraverseError> {
+        visit.call(&self.score_class)?;
+        visit.call(&self.tuple_new)?;
+        for name in &self.names {
+            visit.call(name)?;
+        }
+        Ok(())
     }
 
     #[allow(clippy::type_complexity)]
