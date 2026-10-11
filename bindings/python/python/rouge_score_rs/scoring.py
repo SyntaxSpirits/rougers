@@ -72,6 +72,6 @@ def _numpy():
         import numpy
     except ImportError as error:
         raise ImportError(
-            "BootstrapAggregator requires NumPy: pip install 'rougers[aggregate]'"
+            "BootstrapAggregator requires NumPy: pip install 'rouge-score-rs[aggregate]'"
         ) from error
     return numpy

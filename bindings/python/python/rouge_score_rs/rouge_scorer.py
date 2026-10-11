@@ -1,6 +1,6 @@
 """ROUGE scoring, compatible with ``rouge_score.rouge_scorer``."""
 
-from rougers import _native, _rougers, scoring, tokenizers
+from rouge_score_rs import _native, _rougers, scoring, tokenizers
 
 
 class RougeScorer(scoring.BaseScorer):
@@ -163,6 +163,6 @@ def _sent_tokenize(text):
         import nltk
     except ImportError as error:
         raise ImportError(
-            "split_summaries=True requires NLTK: pip install 'rougers[sentences]'"
+            "split_summaries=True requires NLTK: pip install 'rouge-score-rs[sentences]'"
         ) from error
     return nltk.sent_tokenize(text)

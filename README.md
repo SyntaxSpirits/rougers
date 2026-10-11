@@ -1,7 +1,7 @@
 # rougers
 
 [![CI](https://github.com/SyntaxSpirits/rougers/actions/workflows/ci.yml/badge.svg)](https://github.com/SyntaxSpirits/rougers/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/rougers.svg)](https://pypi.org/project/rougers/)
+[![PyPI](https://img.shields.io/pypi/v/rouge-score-rs.svg)](https://pypi.org/project/rouge-score-rs/)
 [![Crates.io](https://img.shields.io/crates/v/rougers.svg)](https://crates.io/crates/rougers)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
@@ -15,16 +15,19 @@ and becomes the bottleneck once you score tens of thousands of outputs. `rougers
 reproduces it exactly, down to the last bit of every float, including the tokenizer,
 NLTK's Porter stemmer and the summary-level `rougeLsum`.
 
+The Rust crate is `rougers`; the Python package built on it is `rouge-score-rs`. This is an
+independent project, not affiliated with Google or the authors of `rouge-score`.
+
 ## Python
 
 ```sh
-pip install rougers
+pip install rouge-score-rs
 ```
 
 Change the import and keep the rest of your code:
 
 ```python
-from rougers import rouge_scorer  # was: from rouge_score import rouge_scorer
+from rouge_score_rs import rouge_scorer  # was: from rouge_score import rouge_scorer
 
 scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeL", "rougeLsum"], use_stemmer=True)
 scores = scorer.score(
@@ -78,8 +81,8 @@ with Python 3.12:
 | | seconds | pairs per second | speedup |
 |---|---:|---:|---:|
 | `rouge-score` 0.1.2 | 16.95 | 590 | 1× |
-| `rougers` `score()` | 0.59 | 17,078 | 29× |
-| `rougers` `score_batch()`, 8 threads | 0.12 | 83,957 | 142× |
+| `rouge-score-rs` `score()` | 0.59 | 17,078 | 29× |
+| `rouge-score-rs` `score_batch()`, 8 threads | 0.12 | 83,957 | 142× |
 
 The script asserts that all three produce the same scores. To reproduce:
 
@@ -90,8 +93,8 @@ python benchmarks/compare.py --pairs 10000
 
 ## Compatibility
 
-The test suite compares `rougers` with `rouge-score` and fails on any difference in
-any float:
+The test suite compares `rouge-score-rs` with `rouge-score` and fails on any difference
+in any float:
 
 - the stemmer against NLTK on all 235,976 words of a system dictionary (NLTK 3.8–3.10
   stem them identically);
@@ -107,9 +110,9 @@ Known differences:
   first call to `score`. Type names must be exactly `rouge1`…`rouge9`, `rougeL` or
   `rougeLsum`.
 - Texts must be `str`; `rouge-score` also accepts UTF-8 `bytes`.
-- `BootstrapAggregator` needs NumPy (`pip install 'rougers[aggregate]'`) and
-  `split_summaries=True` needs NLTK (`pip install 'rougers[sentences]'`). Without
-  them, `rougers` has no Python dependencies.
+- `BootstrapAggregator` needs NumPy (`pip install 'rouge-score-rs[aggregate]'`) and
+  `split_summaries=True` needs NLTK (`pip install 'rouge-score-rs[sentences]'`).
+  Without them, `rouge-score-rs` has no Python dependencies.
 
 ## Development
 

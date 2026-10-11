@@ -2,7 +2,7 @@
 
 import re
 
-from rougers import _native, _rougers
+from rouge_score_rs import _native, _rougers
 
 VALID_TOKEN_RE = re.compile(r"^[a-z0-9]+$")
 

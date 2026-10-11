@@ -1,4 +1,4 @@
-"""Compare rougers with rouge-score on summary-sized English texts.
+"""Compare rouge-score-rs with rouge-score on summary-sized English texts.
 
 pip install rouge-score nltk
 python benchmarks/compare.py --pairs 5000
@@ -12,7 +12,7 @@ import time
 import nltk
 from rouge_score import rouge_scorer as reference
 
-from rougers import rouge_scorer
+from rouge_score_rs import rouge_scorer
 
 ROUGE_TYPES = ["rouge1", "rouge2", "rougeL", "rougeLsum"]
 
@@ -61,14 +61,14 @@ def main():
 
     print(f"{len(pairs)} pairs, ~{words:.0f} words per text, stemmer={use_stemmer}")
     print(f"types: {', '.join(ROUGE_TYPES)}")
-    print(f"{'implementation':<28}{'seconds':>10}{'pairs/s':>12}{'speedup':>10}")
+    print(f"{'implementation':<36}{'seconds':>10}{'pairs/s':>12}{'speedup':>10}")
     for name, seconds in [
         ("rouge-score", t_reference),
-        ("rougers score()", t_serial),
-        (f"rougers score_batch() x{os.cpu_count()}", t_batch),
+        ("rouge-score-rs score()", t_serial),
+        (f"rouge-score-rs score_batch() x{os.cpu_count()}", t_batch),
     ]:
         print(
-            f"{name:<28}{seconds:>10.3f}{len(pairs) / seconds:>12.0f}{t_reference / seconds:>9.1f}x"
+            f"{name:<36}{seconds:>10.3f}{len(pairs) / seconds:>12.0f}{t_reference / seconds:>9.1f}x"
         )
 
 
