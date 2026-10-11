@@ -64,7 +64,9 @@ memory costs.[^rss]
 ## Environment and results
 
 Run on 2026-10-11: Apple M1 Pro, 8 logical CPUs, macOS 14.5 arm64, Python 3.12.11.
-Local `rouge-score-rs` 0.1.0 (Git revision `8e7aa7d`) was built with maturin 1.15.0 in release mode.
+Local `rouge-score-rs` was built from Git revision `8e7aa7d` with maturin 1.15.0 in release mode; its library and
+binding code is identical to the 0.2.1 release (the package list in the JSON shows a stale 0.1.0 from the
+environment's install metadata).
 Comparison versions: `rouge-score` 0.1.2, `rouge-rust` 0.1.12, `rouge` 1.0.1, Evaluate
 0.4.6, datasets 5.1.0, NumPy 2.5.4, NLTK 3.10.3 and PyArrow 26.0.0. All installed versions
 and the library Git revision are in
@@ -148,7 +150,7 @@ to this benchmark. TorchMetrics is inspected at 1.8.2 and is not timed or instal
 | Package | Stemming | rougeLsum | Custom tokenizer | Multiple references | Bootstrap aggregation | Parity with rouge-score | Parallelism | Licence |
 |---|---|---|---|---|---|---|---|---|---|
 | rouge-score 0.1.2 [^google] | Porter | Yes; newlines by default | Object with `tokenize` | `score_multi`, best F1 per metric | `BootstrapAggregator` | Reference | Serial scoring; caller can distribute pairs | Apache-2.0 |
-| rouge-score-rs 0.1.0 [^rs] | Compatible Porter | Yes; newlines by default | Same API, plus native `unicode-v1` and `character-v1` profiles | Same API | Compatible `BootstrapAggregator` | Exact on all tested full/subset configurations and Evaluate aggregates | Rayon batch; GIL released; custom tokenizer/sentence-splitting fallback is serial | Apache-2.0 |
+| rouge-score-rs 0.2.1 [^rs] | Compatible Porter | Yes; newlines by default | Same API, plus native `unicode-v1` and `character-v1` profiles | Same API | Compatible `BootstrapAggregator` | Exact on all tested full/subset configurations and Evaluate aggregates | Rayon batch; GIL released; custom tokenizer/sentence-splitting fallback is serial | Apache-2.0 |
 | rouge-rust 0.1.12 [^rust] | No | No | No | No | No | Exact on the tested 1/2/L subset without stemming; not full API parity | Rayon batch; GIL released | MIT |
 | rouge 1.0.1 (pltrdy) [^pltrdy] | No | No compatible `rougeLsum`; its `rouge-l` is summary-level | No | No | No; optional arithmetic mean | Different: tokenization, counting and F1 smoothing | Serial Python | Apache-2.0 |
 | TorchMetrics ROUGEScore 1.8.2 [^torch] | Porter | Yes; NLTK sentence splitting | Callable tokenizer and normalizer | Best F1 or average | No in ROUGEScore; corpus arithmetic mean | Not bit-identical by default: tensor dtype, sentence splitting and aggregation differ | Python scoring loops; Metric supports distributed state synchronization | Apache-2.0 |
