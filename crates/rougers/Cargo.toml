@@ -15,6 +15,8 @@ homepage.workspace = true
 
 [dependencies]
 rustc-hash = "2.1"
+unicode-normalization = "=0.1.25"
+unicode-segmentation = "=1.13.3"
 
 [dev-dependencies]
 criterion = "0.8"

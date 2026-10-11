@@ -3,10 +3,10 @@ members = ["crates/rougers", "bindings/python"]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Alex Kholodniak <alexandrkholodniak@gmail.com>"]
 edition = "2021"
-rust-version = "1.83"
+rust-version = "1.85"
 license = "Apache-2.0"
 repository = "https://github.com/SyntaxSpirits/rougers"
 homepage = "https://github.com/SyntaxSpirits/rougers"

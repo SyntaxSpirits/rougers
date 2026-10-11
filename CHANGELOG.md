@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.0 - Unreleased
+
+- `UnicodeTokenizer` (profile `unicode-v1`): Unicode word boundaries after lowercasing
+  and NFKC normalization, for languages in any script.
+- `CharacterTokenizer` (profile `character-v1`): one token per grapheme cluster, for
+  character-level ROUGE such as in Chinese.
+- Both run natively, including in parallel `score_batch`. The default tokenizer is
+  unchanged.
+- Rust: `Tokenizer::unicode`, `Tokenizer::character` and `Tokenizer::profile`.
+  Minimum Rust version 1.85.
+
 ## 0.1.1 - 2026-10-11
 
 Python package only; the Rust crate is unchanged.

@@ -17,6 +17,10 @@ class RougeScorer(scoring.BaseScorer):
     For ``rougeLsum`` sentences are separated by newlines, or found with
     ``nltk.sent_tokenize`` when ``split_summaries`` is true.
 
+    For text that is not in English, pass ``tokenizer=UnicodeTokenizer()`` or
+    ``tokenizer=CharacterTokenizer()`` from ``rouge_score_rs.tokenizers``; they
+    run natively, like the default tokenizer.
+
     Unlike ``rouge_score``, an invalid type raises ``ValueError`` here rather
     than on the first call to ``score``.
     """
@@ -77,18 +81,20 @@ class RougeScorer(scoring.BaseScorer):
         return [self.score(t, p) for t, p in zip(targets, predictions)]
 
     def _native_scorer(self):
-        stemmer = self._tokenizer.use_stemmer if self._has_default_tokenizer() else False
-        key = (tuple(self.rouge_types), stemmer)
+        if self._has_native_tokenizer():
+            key = (tuple(self.rouge_types), self._tokenizer.use_stemmer, self._tokenizer.profile)
+        else:
+            key = (tuple(self.rouge_types), False, tokenizers.DefaultTokenizer.profile)
         if key != self._scorer_key:
-            self._scorer = _rougers.Scorer(list(key[0]), stemmer)
+            self._scorer = _rougers.Scorer(list(key[0]), key[1], key[2])
             self._scorer_key = key
         return self._scorer
 
-    def _has_default_tokenizer(self):
-        return type(self._tokenizer) is tokenizers.DefaultTokenizer
+    def _has_native_tokenizer(self):
+        return type(self._tokenizer) in tokenizers.NATIVE_TOKENIZERS
 
     def _tokenizes_natively(self):
-        return self._has_default_tokenizer() and not self._split_summaries
+        return self._has_native_tokenizer() and not self._split_summaries
 
     def _scores_natively(self):
         score = getattr(self.score, "__func__", None)
