@@ -33,12 +33,12 @@ class DefaultTokenizer(Tokenizer):
 class UnicodeTokenizer(Tokenizer):
     """Splits text into words by the Unicode word boundary rules (UAX #29).
 
-    Profile ``unicode-v1``: the text is lowercased and NFKC-normalized, and every
-    word that contains a letter or a number becomes a token, so punctuation inside
-    a word is kept (``don't``, ``3.50``). Suitable for languages that separate
-    words with spaces, in any script. Chinese and Japanese ideographs become one
-    token each; Thai, Lao, Khmer and Burmese are not segmented into words. Uses
-    Unicode 17.0 data and no stemming.
+    Profile ``unicode-v1``: the text is normalized (NFKC, full case folding, NFKC
+    again), and every word that contains an alphabetic character or a number
+    becomes a token, so punctuation inside a word is kept (``don't``, ``3.50``).
+    Suitable for languages that separate words with spaces, in any script.
+    Chinese and Japanese ideographs become one token each; Thai, Lao, Khmer and
+    Burmese are not segmented into words. Uses Unicode 17.0 data and no stemming.
     """
 
     profile = "unicode-v1"
@@ -54,11 +54,11 @@ class UnicodeTokenizer(Tokenizer):
 class CharacterTokenizer(Tokenizer):
     """Makes every character a token.
 
-    Profile ``character-v1``: the text is lowercased and NFKC-normalized, and
-    every grapheme cluster (a user-perceived character, UAX #29) that contains a
-    letter or a number becomes a token; whitespace, punctuation and symbols are
-    dropped. Character-level ROUGE is a common convention for Chinese. Uses
-    Unicode 17.0 data.
+    Profile ``character-v1``: the text is normalized like ``unicode-v1``, and every
+    grapheme cluster (a user-perceived character, UAX #29) that contains an
+    alphabetic character or a number becomes a token; whitespace, punctuation and
+    symbols are dropped. Character-level ROUGE is a common convention for Chinese.
+    Uses Unicode 17.0 data.
     """
 
     profile = "character-v1"

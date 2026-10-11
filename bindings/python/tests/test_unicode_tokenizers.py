@@ -79,6 +79,8 @@ def as_tuples(scores):
     ("text", "expected"),
     [
         ("Привет, мир!", ["привет", "мир"]),
+        ("Straße STRASSE ｓｔｒａｓｓｅ", ["strasse", "strasse", "strasse"]),
+        ("𝐀 ㎒", ["a", "mhz"]),
         ("مرحبا بالعالم", ["مرحبا", "بالعالم"]),
         ("नमस्ते दुनिया", ["नमस्ते", "दुनिया"]),
         ("Don't pay $3.50 for e-mail.", ["don't", "pay", "3.50", "for", "e", "mail"]),
@@ -93,6 +95,8 @@ def test_unicode_tokens(text, expected):
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
+        ("\u0345\u093e\u05b0", ["\u03b9\u093e\u05b0"]),
+        ("\u093e", ["\u093e"]),
         ("我爱北京。", ["我", "爱", "北", "京"]),
         ("A1 b!", ["a", "1", "b"]),
         ("Café", ["c", "a", "f", "é"]),
@@ -155,8 +159,6 @@ def test_token_invariants(text):
         assert tokens == lines
         for token in tokens:
             assert token
-            # Characters newer than Python's Unicode database are unassigned (Cn) to it.
-            assert any(
-                ch.isalnum() or unicodedata.category(ch) in ("Nd", "Nl", "No", "Cn") for ch in token
-            )
-            assert unicodedata.normalize("NFKC", token) == token
+            assert profile().tokenize(token) == [token]
+            # Python's Unicode database may be older than 17.0 (unassigned there: Cn).
+            assert any(ch.isalpha() or unicodedata.category(ch)[0] in "NMC" for ch in token)

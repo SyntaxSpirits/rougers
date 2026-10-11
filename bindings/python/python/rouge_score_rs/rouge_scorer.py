@@ -64,10 +64,12 @@ class RougeScorer(scoring.BaseScorer):
         """Scores pairs of targets and predictions, which must have equal length.
 
         Returns the same as ``[self.score(t, p) for t, p in zip(targets, predictions)]``.
-        With the default tokenizer and ``split_summaries=False`` the pairs are
-        scored on all CPU cores without holding the GIL; the thread count can be
-        limited with the ``RAYON_NUM_THREADS`` environment variable. Otherwise,
-        and in a process forked after a parallel call, pairs are scored one by one.
+        With ``DefaultTokenizer``, ``UnicodeTokenizer`` or ``CharacterTokenizer`` and
+        ``split_summaries=False`` the pairs are scored on all CPU cores without holding
+        the GIL; the thread count can be limited with the ``RAYON_NUM_THREADS``
+        environment variable. Otherwise (other tokenizers, including subclasses of
+        these), and in a process forked after a parallel call, pairs are scored one by
+        one.
         """
         targets = list(targets)
         predictions = list(predictions)
