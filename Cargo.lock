@@ -593,7 +593,9 @@ version = "0.2.0"
 dependencies = [
  "criterion",
  "icu_casemap",
+ "icu_casemap_data",
  "icu_properties",
+ "icu_properties_data",
  "rustc-hash",
  "unicode-normalization",
  "unicode-segmentation",

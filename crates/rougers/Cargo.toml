@@ -16,6 +16,9 @@ homepage.workspace = true
 [dependencies]
 icu_casemap = "=2.3.0"
 icu_properties = "=2.3.0"
+# The tokenizer profiles must not change: pin the Unicode data as well.
+icu_casemap_data = "=2.3.0"
+icu_properties_data = "=2.3.0"
 rustc-hash = "2.1"
 unicode-normalization = "=0.1.25"
 unicode-segmentation = "=1.13.3"
