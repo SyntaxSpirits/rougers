@@ -53,6 +53,21 @@ Set `RAYON_NUM_THREADS` to limit the number of threads. With a custom tokenizer 
 `split_summaries=True`, and in a process forked after a parallel call, pairs are scored
 one by one.
 
+## Hugging Face Evaluate
+
+The [`SyntaxSpirits/rouge`](https://huggingface.co/spaces/SyntaxSpirits/rouge) metric has
+the same inputs, options and scores as Evaluate's built-in `rouge` metric and computes them
+with this package:
+
+```python
+import evaluate
+
+rouge = evaluate.load("SyntaxSpirits/rouge")  # was: evaluate.load("rouge")
+results = rouge.compute(predictions=predictions, references=references)
+```
+
+It needs `pip install evaluate 'rouge-score-rs[aggregate]>=0.1.1'`.
+
 ## Rust
 
 ```toml
