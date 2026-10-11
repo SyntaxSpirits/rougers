@@ -1,82 +1,82 @@
 # Benchmark results
 
-2026-10-11T02:59:46.035311+00:00; Apple M1 Pro; 8 logical CPUs; macOS-14.5-arm64-arm-64bit; Python 3.12.11.
+2026-10-11T04:04:40.115976+00:00; Apple M1 Pro; 8 logical CPUs; macOS-14.5-arm64-arm-64bit; Python 3.12.11.
 2000 pairs per workload; seed 1729; median of 3 timed runs after one warmup.
 
 | Workload | Stem | Implementation | Threads | Seconds | Pairs/s | Like-for-like speedup | Peak RSS MiB |
 |---|---|---|---:|---:|---:|---:|---:|
-| cnn_dailymail | False | rouge-score loop | 1 | 2.6061 | 767 | 1.00× | 85.8 |
-| cnn_dailymail | False | rouge-score-rs loop | 1 | 0.1197 | 16715 | 21.78× | 47.2 |
-| cnn_dailymail | False | rouge-score-rs batch | 1 | 0.1155 | 17315 | 22.56× | 51.3 |
-| cnn_dailymail | False | rouge-score-rs batch | 2 | 0.0782 | 25578 | 33.33× | 52.6 |
-| cnn_dailymail | False | rouge-score-rs batch | 4 | 0.0393 | 50849 | 66.26× | 49.5 |
-| cnn_dailymail | False | rouge-score-rs batch | 8 | 0.0285 | 70168 | 91.43× | 51.8 |
-| cnn_dailymail | False | Evaluate rouge | 1 | 2.6018 | 769 | 1.00× | 192.0 |
-| cnn_dailymail | False | Evaluate SyntaxSpirits/rouge | 8 | 0.2563 | 7805 | 10.15× | 187.9 |
-| cnn_dailymail | False | rouge-score loop (1/2/L) | 1 | 1.2119 | 1650 | 1.00× | 88.8 |
-| cnn_dailymail | False | rouge-score-rs loop (1/2/L) | 1 | 0.0640 | 31229 | 18.92× | 43.4 |
-| cnn_dailymail | False | rouge-score-rs batch (1/2/L) | 1 | 0.0636 | 31460 | 19.06× | 51.1 |
-| cnn_dailymail | False | rouge-score-rs batch (1/2/L) | 8 | 0.0133 | 150690 | 91.31× | 47.3 |
-| cnn_dailymail | False | rouge-rust loop (1/2/L) | 1 | 0.0384 | 52146 | 31.60× | 43.3 |
-| cnn_dailymail | False | rouge-rust batch (1/2/L) | 1 | 0.0373 | 53557 | 32.45× | 46.6 |
-| cnn_dailymail | False | rouge-rust batch (1/2/L) | 8 | 0.0072 | 279624 | 169.43× | 46.9 |
-| cnn_dailymail | False | rouge/pltrdy (different computation) | 1 | 2.8363 | 705 | — | 59.9 |
-| cnn_dailymail | True | rouge-score loop | 1 | 5.1030 | 392 | 1.00× | 91.6 |
-| cnn_dailymail | True | rouge-score-rs loop | 1 | 0.1543 | 12963 | 33.08× | 46.0 |
-| cnn_dailymail | True | rouge-score-rs batch | 1 | 0.1520 | 13161 | 33.58× | 50.6 |
-| cnn_dailymail | True | rouge-score-rs batch | 2 | 0.0821 | 24370 | 62.18× | 51.1 |
-| cnn_dailymail | True | rouge-score-rs batch | 4 | 0.0432 | 46342 | 118.24× | 49.9 |
-| cnn_dailymail | True | rouge-score-rs batch | 8 | 0.0283 | 70689 | 180.36× | 52.7 |
-| cnn_dailymail | True | Evaluate rouge | 1 | 5.2883 | 378 | 1.00× | 202.5 |
-| cnn_dailymail | True | Evaluate SyntaxSpirits/rouge | 8 | 0.2513 | 7960 | 21.05× | 186.2 |
-| xsum | False | rouge-score loop | 1 | 0.3660 | 5464 | 1.00× | 87.3 |
-| xsum | False | rouge-score-rs loop | 1 | 0.0344 | 58162 | 10.64× | 43.4 |
-| xsum | False | rouge-score-rs batch | 1 | 0.0329 | 60829 | 11.13× | 44.9 |
-| xsum | False | rouge-score-rs batch | 2 | 0.0186 | 107254 | 19.63× | 44.7 |
-| xsum | False | rouge-score-rs batch | 4 | 0.0118 | 169358 | 31.00× | 47.6 |
-| xsum | False | rouge-score-rs batch | 8 | 0.0092 | 217110 | 39.74× | 44.7 |
-| xsum | False | Evaluate rouge | 1 | 0.5784 | 3458 | 1.00× | 191.1 |
-| xsum | False | Evaluate SyntaxSpirits/rouge | 8 | 0.2467 | 8107 | 2.34× | 174.6 |
-| xsum | False | rouge-score loop (1/2/L) | 1 | 0.2034 | 9833 | 1.00× | 81.4 |
-| xsum | False | rouge-score-rs loop (1/2/L) | 1 | 0.0212 | 94138 | 9.57× | 39.7 |
-| xsum | False | rouge-score-rs batch (1/2/L) | 1 | 0.0222 | 90189 | 9.17× | 42.7 |
-| xsum | False | rouge-score-rs batch (1/2/L) | 8 | 0.0083 | 240769 | 24.49× | 43.1 |
-| xsum | False | rouge-rust loop (1/2/L) | 1 | 0.0082 | 242489 | 24.66× | 41.0 |
-| xsum | False | rouge-rust batch (1/2/L) | 1 | 0.0083 | 241665 | 24.58× | 41.8 |
-| xsum | False | rouge-rust batch (1/2/L) | 8 | 0.0040 | 497667 | 50.61× | 41.9 |
-| xsum | False | rouge/pltrdy (different computation) | 1 | 0.3450 | 5797 | — | 45.7 |
-| xsum | True | rouge-score loop | 1 | 1.1921 | 1678 | 1.00× | 87.1 |
-| xsum | True | rouge-score-rs loop | 1 | 0.0498 | 40121 | 23.91× | 43.5 |
-| xsum | True | rouge-score-rs batch | 1 | 0.0464 | 43089 | 25.68× | 46.8 |
-| xsum | True | rouge-score-rs batch | 2 | 0.0264 | 75758 | 45.15× | 46.3 |
-| xsum | True | rouge-score-rs batch | 4 | 0.0188 | 106184 | 63.29× | 45.4 |
-| xsum | True | rouge-score-rs batch | 8 | 0.0121 | 165864 | 98.86× | 46.7 |
-| xsum | True | Evaluate rouge | 1 | 1.4742 | 1357 | 1.00× | 177.0 |
-| xsum | True | Evaluate SyntaxSpirits/rouge | 8 | 0.2332 | 8578 | 6.32× | 166.8 |
-| pubmed | False | rouge-score loop | 1 | 13.5276 | 148 | 1.00× | 95.1 |
-| pubmed | False | rouge-score-rs loop | 1 | 0.4040 | 4951 | 33.49× | 55.4 |
-| pubmed | False | rouge-score-rs batch | 1 | 0.4033 | 4959 | 33.54× | 68.9 |
-| pubmed | False | rouge-score-rs batch | 2 | 0.2069 | 9666 | 65.38× | 64.4 |
-| pubmed | False | rouge-score-rs batch | 4 | 0.1087 | 18401 | 124.46× | 63.5 |
-| pubmed | False | rouge-score-rs batch | 8 | 0.0786 | 25452 | 172.15× | 67.7 |
-| pubmed | False | Evaluate rouge | 1 | 13.1302 | 152 | 1.00× | 218.5 |
-| pubmed | False | Evaluate SyntaxSpirits/rouge | 8 | 0.3299 | 6063 | 39.80× | 197.2 |
-| pubmed | False | rouge-score loop (1/2/L) | 1 | 6.2669 | 319 | 1.00× | 89.2 |
-| pubmed | False | rouge-score-rs loop (1/2/L) | 1 | 0.2077 | 9629 | 30.17× | 55.3 |
-| pubmed | False | rouge-score-rs batch (1/2/L) | 1 | 0.2061 | 9706 | 30.41× | 60.3 |
-| pubmed | False | rouge-score-rs batch (1/2/L) | 8 | 0.0364 | 54987 | 172.30× | 67.4 |
-| pubmed | False | rouge-rust loop (1/2/L) | 1 | 0.1594 | 12546 | 39.31× | 50.2 |
-| pubmed | False | rouge-rust batch (1/2/L) | 1 | 0.1604 | 12466 | 39.06× | 61.8 |
-| pubmed | False | rouge-rust batch (1/2/L) | 8 | 0.0267 | 74950 | 234.85× | 61.5 |
-| pubmed | False | rouge/pltrdy (different computation) | 1 | 21.1645 | 94 | — | 104.9 |
-| pubmed | True | rouge-score loop | 1 | 19.9971 | 100 | 1.00× | 89.8 |
-| pubmed | True | rouge-score-rs loop | 1 | 0.5081 | 3936 | 39.35× | 53.1 |
-| pubmed | True | rouge-score-rs batch | 1 | 0.5328 | 3754 | 37.53× | 65.8 |
-| pubmed | True | rouge-score-rs batch | 2 | 0.2699 | 7411 | 74.10× | 67.1 |
-| pubmed | True | rouge-score-rs batch | 4 | 0.1359 | 14721 | 147.19× | 66.0 |
-| pubmed | True | rouge-score-rs batch | 8 | 0.0994 | 20122 | 201.19× | 64.4 |
-| pubmed | True | Evaluate rouge | 1 | 20.3083 | 98 | 1.00× | 218.8 |
-| pubmed | True | Evaluate SyntaxSpirits/rouge | 8 | 0.3198 | 6254 | 63.51× | 216.0 |
+| cnn_dailymail | False | rouge-score loop | 1 | 2.5209 | 793 | 1.00× | 83.2 |
+| cnn_dailymail | False | rouge-score-rs loop | 1 | 0.0428 | 46726 | 58.89× | 46.8 |
+| cnn_dailymail | False | rouge-score-rs batch | 1 | 0.0442 | 45224 | 57.00× | 51.8 |
+| cnn_dailymail | False | rouge-score-rs batch | 2 | 0.0257 | 77873 | 98.15× | 48.7 |
+| cnn_dailymail | False | rouge-score-rs batch | 4 | 0.0245 | 81533 | 102.77× | 50.7 |
+| cnn_dailymail | False | rouge-score-rs batch | 8 | 0.0105 | 189595 | 238.97× | 49.3 |
+| cnn_dailymail | False | Evaluate rouge | 1 | 2.6896 | 744 | 1.00× | 180.9 |
+| cnn_dailymail | False | Evaluate SyntaxSpirits/rouge | 8 | 0.2335 | 8564 | 11.52× | 164.6 |
+| cnn_dailymail | False | rouge-score loop (1/2/L) | 1 | 1.3252 | 1509 | 1.00× | 86.2 |
+| cnn_dailymail | False | rouge-score-rs loop (1/2/L) | 1 | 0.0172 | 116453 | 77.16× | 42.7 |
+| cnn_dailymail | False | rouge-score-rs batch (1/2/L) | 1 | 0.0160 | 125323 | 83.04× | 45.5 |
+| cnn_dailymail | False | rouge-score-rs batch (1/2/L) | 8 | 0.0047 | 422145 | 279.71× | 45.2 |
+| cnn_dailymail | False | rouge-rust loop (1/2/L) | 1 | 0.0384 | 52068 | 34.50× | 43.0 |
+| cnn_dailymail | False | rouge-rust batch (1/2/L) | 1 | 0.0389 | 51389 | 34.05× | 45.8 |
+| cnn_dailymail | False | rouge-rust batch (1/2/L) | 8 | 0.0074 | 268719 | 178.05× | 46.4 |
+| cnn_dailymail | False | rouge/pltrdy (different computation) | 1 | 2.8526 | 701 | — | 53.8 |
+| cnn_dailymail | True | rouge-score loop | 1 | 5.2720 | 379 | 1.00× | 74.0 |
+| cnn_dailymail | True | rouge-score-rs loop | 1 | 0.0929 | 21523 | 56.73× | 45.3 |
+| cnn_dailymail | True | rouge-score-rs batch | 1 | 0.0851 | 23507 | 61.97× | 49.1 |
+| cnn_dailymail | True | rouge-score-rs batch | 2 | 0.0462 | 43308 | 114.16× | 48.5 |
+| cnn_dailymail | True | rouge-score-rs batch | 4 | 0.0251 | 79639 | 209.93× | 48.3 |
+| cnn_dailymail | True | rouge-score-rs batch | 8 | 0.0175 | 113977 | 300.44× | 48.8 |
+| cnn_dailymail | True | Evaluate rouge | 1 | 5.3930 | 371 | 1.00× | 197.8 |
+| cnn_dailymail | True | Evaluate SyntaxSpirits/rouge | 8 | 0.3006 | 6654 | 17.94× | 179.7 |
+| xsum | False | rouge-score loop | 1 | 0.3758 | 5322 | 1.00× | 82.3 |
+| xsum | False | rouge-score-rs loop | 1 | 0.0126 | 158205 | 29.73× | 41.1 |
+| xsum | False | rouge-score-rs batch | 1 | 0.0103 | 193793 | 36.42× | 43.5 |
+| xsum | False | rouge-score-rs batch | 2 | 0.0066 | 305039 | 57.32× | 44.6 |
+| xsum | False | rouge-score-rs batch | 4 | 0.0045 | 448766 | 84.33× | 44.1 |
+| xsum | False | rouge-score-rs batch | 8 | 0.0045 | 439786 | 82.64× | 44.4 |
+| xsum | False | Evaluate rouge | 1 | 0.7498 | 2668 | 1.00× | 184.3 |
+| xsum | False | Evaluate SyntaxSpirits/rouge | 8 | 0.2258 | 8856 | 3.32× | 171.1 |
+| xsum | False | rouge-score loop (1/2/L) | 1 | 0.2082 | 9607 | 1.00× | 86.8 |
+| xsum | False | rouge-score-rs loop (1/2/L) | 1 | 0.0075 | 266096 | 27.70× | 41.7 |
+| xsum | False | rouge-score-rs batch (1/2/L) | 1 | 0.0066 | 304082 | 31.65× | 41.7 |
+| xsum | False | rouge-score-rs batch (1/2/L) | 8 | 0.0029 | 678100 | 70.58× | 42.8 |
+| xsum | False | rouge-rust loop (1/2/L) | 1 | 0.0098 | 204351 | 21.27× | 41.7 |
+| xsum | False | rouge-rust batch (1/2/L) | 1 | 0.0085 | 234922 | 24.45× | 42.6 |
+| xsum | False | rouge-rust batch (1/2/L) | 8 | 0.0042 | 475125 | 49.46× | 42.9 |
+| xsum | False | rouge/pltrdy (different computation) | 1 | 0.3411 | 5864 | — | 46.6 |
+| xsum | True | rouge-score loop | 1 | 1.2187 | 1641 | 1.00× | 83.4 |
+| xsum | True | rouge-score-rs loop | 1 | 0.0247 | 81036 | 49.38× | 38.5 |
+| xsum | True | rouge-score-rs batch | 1 | 0.0237 | 84239 | 51.33× | 40.8 |
+| xsum | True | rouge-score-rs batch | 2 | 0.0132 | 151846 | 92.53× | 42.6 |
+| xsum | True | rouge-score-rs batch | 4 | 0.0079 | 251628 | 153.33× | 43.6 |
+| xsum | True | rouge-score-rs batch | 8 | 0.0062 | 321914 | 196.16× | 45.2 |
+| xsum | True | Evaluate rouge | 1 | 1.4617 | 1368 | 1.00× | 189.3 |
+| xsum | True | Evaluate SyntaxSpirits/rouge | 8 | 0.2233 | 8956 | 6.55× | 173.6 |
+| pubmed | False | rouge-score loop | 1 | 13.6516 | 147 | 1.00× | 89.7 |
+| pubmed | False | rouge-score-rs loop | 1 | 0.1693 | 11810 | 80.62× | 55.1 |
+| pubmed | False | rouge-score-rs batch | 1 | 0.1682 | 11893 | 81.18× | 60.3 |
+| pubmed | False | rouge-score-rs batch | 2 | 0.0867 | 23065 | 157.44× | 67.6 |
+| pubmed | False | rouge-score-rs batch | 4 | 0.0464 | 43120 | 294.33× | 66.8 |
+| pubmed | False | rouge-score-rs batch | 8 | 0.0438 | 45620 | 311.39× | 57.2 |
+| pubmed | False | Evaluate rouge | 1 | 21.5716 | 93 | 1.00× | 180.1 |
+| pubmed | False | Evaluate SyntaxSpirits/rouge | 8 | 0.3191 | 6269 | 67.61× | 179.5 |
+| pubmed | False | rouge-score loop (1/2/L) | 1 | 6.9406 | 288 | 1.00× | 96.1 |
+| pubmed | False | rouge-score-rs loop (1/2/L) | 1 | 0.0355 | 56335 | 195.50× | 50.2 |
+| pubmed | False | rouge-score-rs batch (1/2/L) | 1 | 0.0346 | 57826 | 200.67× | 59.1 |
+| pubmed | False | rouge-score-rs batch (1/2/L) | 8 | 0.0081 | 247374 | 858.46× | 58.0 |
+| pubmed | False | rouge-rust loop (1/2/L) | 1 | 0.1619 | 12354 | 42.87× | 48.6 |
+| pubmed | False | rouge-rust batch (1/2/L) | 1 | 0.1618 | 12362 | 42.90× | 60.7 |
+| pubmed | False | rouge-rust batch (1/2/L) | 8 | 0.0269 | 74219 | 257.56× | 54.7 |
+| pubmed | False | rouge/pltrdy (different computation) | 1 | 25.4146 | 79 | — | 104.0 |
+| pubmed | True | rouge-score loop | 1 | 19.6462 | 102 | 1.00× | 93.9 |
+| pubmed | True | rouge-score-rs loop | 1 | 0.2804 | 7134 | 70.08× | 54.2 |
+| pubmed | True | rouge-score-rs batch | 1 | 0.3042 | 6575 | 64.58× | 69.1 |
+| pubmed | True | rouge-score-rs batch | 2 | 0.1479 | 13523 | 132.84× | 65.7 |
+| pubmed | True | rouge-score-rs batch | 4 | 0.0993 | 20132 | 197.76× | 60.4 |
+| pubmed | True | rouge-score-rs batch | 8 | 0.0557 | 35888 | 352.53× | 67.9 |
+| pubmed | True | Evaluate rouge | 1 | 20.6311 | 97 | 1.00× | 199.1 |
+| pubmed | True | Evaluate SyntaxSpirits/rouge | 8 | 0.2868 | 6974 | 71.94× | 207.6 |
 
 Full = rouge1/2/L/Lsum. Subset = rouge1/2/L, no stemming. Speedup uses the
 rouge-score baseline in the same group (Evaluate uses compute time).
@@ -86,18 +86,18 @@ attributable to the scorer. Thread counts are RAYON_NUM_THREADS, not CPU affinit
 
 | Workload | Stem | Evaluate metric | Load s | Compute s | Scoring s | Load + compute s |
 |---|---|---|---:|---:|---:|---:|
-| cnn_dailymail | False | rouge | 1.0228 | 2.6018 | 2.4042 | 3.6246 |
-| cnn_dailymail | False | SyntaxSpirits/rouge | 1.2511 | 0.2563 | 0.0321 | 1.5074 |
-| cnn_dailymail | True | rouge | 0.7944 | 5.2883 | 6.2836 | 6.0827 |
-| cnn_dailymail | True | SyntaxSpirits/rouge | 0.3300 | 0.2513 | 0.0316 | 0.5813 |
-| xsum | False | rouge | 1.1881 | 0.5784 | 0.3774 | 1.7665 |
-| xsum | False | SyntaxSpirits/rouge | 0.3558 | 0.2467 | 0.0099 | 0.6025 |
-| xsum | True | rouge | 0.8325 | 1.4742 | 1.2019 | 2.3067 |
-| xsum | True | SyntaxSpirits/rouge | 0.7614 | 0.2332 | 0.0116 | 0.9946 |
-| pubmed | False | rouge | 0.7723 | 13.1302 | 12.8830 | 13.9025 |
-| pubmed | False | SyntaxSpirits/rouge | 0.5232 | 0.3299 | 0.2195 | 0.8531 |
-| pubmed | True | rouge | 0.8959 | 20.3083 | 19.4537 | 21.2043 |
-| pubmed | True | SyntaxSpirits/rouge | 0.3557 | 0.3198 | 0.0870 | 0.6754 |
+| cnn_dailymail | False | rouge | 0.9023 | 2.6896 | 2.8886 | 3.5918 |
+| cnn_dailymail | False | SyntaxSpirits/rouge | 0.6752 | 0.2335 | 0.0098 | 0.9088 |
+| cnn_dailymail | True | rouge | 0.8012 | 5.3930 | 5.1605 | 6.1941 |
+| cnn_dailymail | True | SyntaxSpirits/rouge | 0.3579 | 0.3006 | 0.0489 | 0.6585 |
+| xsum | False | rouge | 1.0971 | 0.7498 | 0.3841 | 1.8468 |
+| xsum | False | SyntaxSpirits/rouge | 0.2950 | 0.2258 | 0.0039 | 0.5208 |
+| xsum | True | rouge | 0.6947 | 1.4617 | 1.2187 | 2.1564 |
+| xsum | True | SyntaxSpirits/rouge | 0.3025 | 0.2233 | 0.0065 | 0.5258 |
+| pubmed | False | rouge | 0.9735 | 21.5716 | 13.2295 | 22.5452 |
+| pubmed | False | SyntaxSpirits/rouge | 0.4257 | 0.3191 | 0.0437 | 0.7448 |
+| pubmed | True | rouge | 0.8930 | 20.6311 | 20.0144 | 21.5241 |
+| pubmed | True | SyntaxSpirits/rouge | 0.3666 | 0.2868 | 0.0579 | 0.6534 |
 
 Load is one evaluate.load call (cache state can vary); compute includes input handling
 and default bootstrap aggregation. Scoring is one separate instrumented compute pass;

@@ -37,8 +37,8 @@ class RougeScorer(scoring.BaseScorer):
         """Returns a dict mapping each ROUGE type to a ``Score``."""
         scorer = self._native_scorer()
         if self._tokenizes_natively():
-            return _scores(_native.call(scorer.score, target, prediction))
-        return _scores(self._score_with_tokenizer(scorer, target, prediction))
+            return _native.call(scorer.score, target, prediction)
+        return self._score_with_tokenizer(scorer, target, prediction)
 
     def score_multi(self, targets, prediction):
         """Scores the prediction against several targets and keeps, for each
@@ -46,7 +46,7 @@ class RougeScorer(scoring.BaseScorer):
         if self._scores_natively():
             best = _native.call(self._native_scorer().score_multi, list(targets), prediction)
             if best is not None:
-                return _scores(best)
+                return best
             if self.rouge_types:
                 raise ValueError("attempt to get argmax of an empty sequence")
             return {}
@@ -78,8 +78,7 @@ class RougeScorer(scoring.BaseScorer):
                 f"targets and predictions differ in length: {len(targets)} != {len(predictions)}"
             )
         if self._scores_natively():
-            rows = _native.call(self._native_scorer().score_batch, targets, predictions)
-            return [_scores(r) for r in rows]
+            return _native.call(self._native_scorer().score_batch, targets, predictions)
         return [self.score(t, p) for t, p in zip(targets, predictions)]
 
     def _native_scorer(self):
@@ -87,8 +86,9 @@ class RougeScorer(scoring.BaseScorer):
             key = (tuple(self.rouge_types), self._tokenizer.use_stemmer, self._tokenizer.profile)
         else:
             key = (tuple(self.rouge_types), False, tokenizers.DefaultTokenizer.profile)
-        if key != self._scorer_key:
-            self._scorer = _rougers.Scorer(list(key[0]), key[1], key[2])
+        # Scorers pickled by 0.1.0 have no cache key; treat that as an empty cache.
+        if key != getattr(self, "_scorer_key", None):
+            self._scorer = _rougers.Scorer(list(key[0]), key[1], key[2], scoring.Score)
             self._scorer_key = key
         return self._scorer
 
@@ -157,10 +157,6 @@ def lcs_ind(ref, can):
             i -= 1
     indices.reverse()
     return indices
-
-
-def _scores(rows):
-    return {name: scoring.Score(p, r, f) for name, p, r, f in rows}
 
 
 def _sent_tokenize(text):

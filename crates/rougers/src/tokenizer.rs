@@ -78,15 +78,80 @@ impl Tokenizer {
     }
 
     pub fn tokenize(&self, text: &str) -> Vec<String> {
+        let mut tokens = Tokens::default();
+        self.tokenize_into(text, &mut tokens);
+        tokens.iter().map(str::to_owned).collect()
+    }
+
+    /// Appends the tokens of `text` to `tokens`.
+    pub(crate) fn tokenize_into(&self, text: &str, tokens: &mut Tokens) {
         match self.kind {
-            Kind::RougeScore { use_stemmer } => rouge_score_tokens(text, use_stemmer),
-            Kind::Unicode => normalize(text).unicode_words().map(str::to_owned).collect(),
-            Kind::Character => normalize(text)
-                .graphemes(true)
-                .filter(|grapheme| grapheme.chars().any(is_alphanumeric))
-                .map(str::to_owned)
-                .collect(),
+            Kind::RougeScore { use_stemmer } => rouge_score_tokens(text, use_stemmer, tokens),
+            Kind::Unicode => {
+                for word in normalize(text).unicode_words() {
+                    tokens.push(word);
+                }
+            }
+            Kind::Character => {
+                for grapheme in normalize(text).graphemes(true) {
+                    if grapheme.chars().any(is_alphanumeric) {
+                        tokens.push(grapheme);
+                    }
+                }
+            }
         }
+    }
+}
+
+/// Tokens stored back to back in one string, so that tokenizing allocates
+/// once per text rather than once per token.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Tokens {
+    text: String,
+    ends: Vec<usize>,
+}
+
+impl Tokens {
+    /// Room for the tokens of a text of `bytes` bytes without reallocating.
+    pub(crate) fn with_capacity(bytes: usize) -> Self {
+        Tokens {
+            text: String::with_capacity(bytes),
+            ends: Vec::with_capacity(bytes / 4 + 1),
+        }
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.ends.len()
+    }
+
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &str> + '_ {
+        let starts = std::iter::once(0).chain(self.ends.iter().copied());
+        starts
+            .zip(&self.ends)
+            .map(|(start, &end)| &self.text[start..end])
+    }
+
+    fn push(&mut self, token: &str) {
+        self.text.push_str(token);
+        self.ends.push(self.text.len());
+    }
+
+    /// Ends the token formed by the text written since the previous token.
+    fn close(&mut self) {
+        if self.text.len() > self.ends.last().copied().unwrap_or(0) {
+            self.ends.push(self.text.len());
+        }
+    }
+
+    fn current(&self) -> &str {
+        &self.text[self.ends.last().copied().unwrap_or(0)..]
+    }
+
+    fn replace_current(&mut self, token: &[u8]) {
+        let start = self.ends.last().copied().unwrap_or(0);
+        self.text.truncate(start);
+        self.text
+            .push_str(std::str::from_utf8(token).expect("stems are ASCII"));
     }
 }
 
@@ -104,44 +169,44 @@ fn is_alphanumeric(ch: char) -> bool {
         || GeneralCategoryGroup::Number.contains(CodePointMapData::<GeneralCategory>::new().get(ch))
 }
 
-fn rouge_score_tokens(text: &str, use_stemmer: bool) -> Vec<String> {
-    let mut tokens = Vec::new();
-    let mut current = String::new();
-    let mut push = |ch: char, current: &mut String| {
+fn rouge_score_tokens(text: &str, use_stemmer: bool, tokens: &mut Tokens) {
+    let mut stem_buffer = Vec::new();
+    let mut push = |ch: char, tokens: &mut Tokens| {
         if ch.is_ascii_lowercase() || ch.is_ascii_digit() {
-            current.push(ch);
+            tokens.text.push(ch);
         } else {
-            finish_token(current, &mut tokens, use_stemmer);
+            finish_token(tokens, use_stemmer, &mut stem_buffer);
         }
     };
+    if text.is_ascii() {
+        for &byte in text.as_bytes() {
+            push(char::from(byte.to_ascii_lowercase()), tokens);
+        }
+        finish_token(tokens, use_stemmer, &mut stem_buffer);
+        return;
+    }
     for ch in text.chars() {
         if ch.is_ascii() {
-            push(ch.to_ascii_lowercase(), &mut current);
+            push(ch.to_ascii_lowercase(), tokens);
         } else {
             // Some non-ASCII characters lowercase to ASCII letters, e.g.
             // KELVIN SIGN becomes "k" and "İ" becomes "i" plus a combining dot.
             for lower in ch.to_lowercase() {
-                push(lower, &mut current);
+                push(lower, tokens);
             }
         }
     }
-    finish_token(&mut current, &mut tokens, use_stemmer);
-    tokens
+    finish_token(tokens, use_stemmer, &mut stem_buffer);
 }
 
-fn finish_token(current: &mut String, tokens: &mut Vec<String>, use_stemmer: bool) {
-    if current.is_empty() {
-        return;
+fn finish_token(tokens: &mut Tokens, use_stemmer: bool, stem_buffer: &mut Vec<u8>) {
+    if use_stemmer && tokens.current().len() > 3 {
+        stem_buffer.clear();
+        stem_buffer.extend_from_slice(tokens.current().as_bytes());
+        porter::stem_in_place(stem_buffer);
+        tokens.replace_current(stem_buffer);
     }
-    let token = std::mem::take(current);
-    if use_stemmer && token.len() > 3 {
-        let stemmed = porter::stem(token);
-        if !stemmed.is_empty() {
-            tokens.push(stemmed);
-        }
-    } else {
-        tokens.push(token);
-    }
+    tokens.close();
 }
 
 #[cfg(test)]

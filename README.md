@@ -7,7 +7,7 @@
 
 ROUGE metrics in Rust, with scores identical to Google's
 [`rouge-score`](https://pypi.org/project/rouge-score/). On CNN/DailyMail, XSum and PubMed
-test samples it scores 11–39 times faster on one core and 40–200 times faster with all
+test samples it scores 30–80 times faster on one core and 80–350 times faster with all
 eight cores of an M1 Pro ([benchmarks](https://github.com/SyntaxSpirits/rougers/blob/main/BENCHMARKS.md)).
 
 `rouge-score` is the ROUGE implementation behind Hugging Face `evaluate` and many

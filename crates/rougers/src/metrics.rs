@@ -4,43 +4,144 @@ use rustc_hash::FxHashMap;
 
 use crate::Score;
 
-pub(crate) fn rouge_n(target: &[u32], prediction: &[u32], n: usize) -> Score {
-    let target_counts = ngram_counts(target, n);
-    let prediction_counts = ngram_counts(prediction, n);
-    let hits: usize = target_counts
-        .iter()
-        .map(|(ngram, &count)| count.min(prediction_counts.get(ngram).copied().unwrap_or(0)))
-        .sum();
+pub(crate) fn rouge_n(target: &[u32], prediction: &[u32], n: usize, vocabulary: usize) -> Score {
+    let hits = match n {
+        1 => unigram_overlap(target, prediction, vocabulary),
+        2 => clipped_overlap(bigrams(target), bigrams(prediction)),
+        _ => clipped_overlap(target.windows(n), prediction.windows(n)),
+    };
     let target_total = ngram_total(target, n).max(1);
     let prediction_total = ngram_total(prediction, n).max(1);
     Score::from_counts(hits, prediction_total, target_total)
 }
 
-fn ngram_counts(tokens: &[u32], n: usize) -> FxHashMap<&[u32], usize> {
-    let mut counts = FxHashMap::default();
-    for ngram in tokens.windows(n) {
+/// The sum over distinct unigrams of min(target count, prediction count),
+/// with counts in a dense array indexed by token id.
+fn unigram_overlap(target: &[u32], prediction: &[u32], vocabulary: usize) -> usize {
+    let mut counts = vec![0usize; vocabulary];
+    for &token in target {
+        counts[token as usize] += 1;
+    }
+    let mut hits = 0;
+    for &token in prediction {
+        let count = &mut counts[token as usize];
+        if *count > 0 {
+            *count -= 1;
+            hits += 1;
+        }
+    }
+    hits
+}
+
+fn bigrams(tokens: &[u32]) -> impl Iterator<Item = u64> + '_ {
+    tokens
+        .windows(2)
+        .map(|pair| (u64::from(pair[0]) << 32) | u64::from(pair[1]))
+}
+
+/// The sum over distinct n-grams of min(target count, prediction count).
+fn clipped_overlap<K: std::hash::Hash + Eq>(
+    target: impl Iterator<Item = K>,
+    prediction: impl Iterator<Item = K>,
+) -> usize {
+    let mut counts: FxHashMap<K, usize> =
+        FxHashMap::with_capacity_and_hasher(target.size_hint().0.min(4096), Default::default());
+    for ngram in target {
         *counts.entry(ngram).or_insert(0) += 1;
     }
-    counts
+    let mut hits = 0;
+    for ngram in prediction {
+        if let Some(count) = counts.get_mut(&ngram) {
+            if *count > 0 {
+                *count -= 1;
+                hits += 1;
+            }
+        }
+    }
+    hits
 }
 
 fn ngram_total(tokens: &[u32], n: usize) -> usize {
     (tokens.len() + 1).saturating_sub(n)
 }
 
-pub(crate) fn rouge_l(target: &[u32], prediction: &[u32]) -> Score {
+pub(crate) fn rouge_l(target: &[u32], prediction: &[u32], vocabulary: usize) -> Score {
     if target.is_empty() || prediction.is_empty() {
         return Score::ZERO;
     }
-    let lcs = lcs_length(target, prediction);
+    let lcs = lcs_length(target, prediction, vocabulary);
     Score::from_counts(lcs, prediction.len(), target.len())
 }
 
-fn lcs_length(a: &[u32], b: &[u32]) -> usize {
-    let mut previous = vec![0usize; b.len() + 1];
-    let mut current = vec![0usize; b.len() + 1];
-    for &x in a {
-        for (j, &y) in b.iter().enumerate() {
+/// Above this many 64-bit mask words the bit-parallel LCS falls back to the
+/// linear-memory table (8 MiB).
+const MAX_MASK_WORDS: usize = 1 << 20;
+
+/// LCS length with the bit-parallel algorithm of Hyyrö (2004): one bit per
+/// position of the shorter sequence, 64 positions per machine word. A zero bit
+/// marks a position where the LCS grew, so the length is the number of zeros.
+fn lcs_length(a: &[u32], b: &[u32], vocabulary: usize) -> usize {
+    let (pattern, text) = if a.len() <= b.len() { (a, b) } else { (b, a) };
+    let words = pattern.len().div_ceil(64);
+
+    // One row of match masks per token that occurs in both sequences.
+    const ABSENT: u32 = u32::MAX;
+    const IN_TEXT: u32 = u32::MAX - 1;
+    let mut row_of = vec![ABSENT; vocabulary];
+    for &token in text {
+        row_of[token as usize] = IN_TEXT;
+    }
+    let mut rows = 0usize;
+    for &token in pattern {
+        let row = &mut row_of[token as usize];
+        if *row == IN_TEXT {
+            *row = rows as u32;
+            rows += 1;
+        }
+    }
+    if rows
+        .checked_mul(words)
+        .is_none_or(|mask_words| mask_words > MAX_MASK_WORDS)
+    {
+        return lcs_length_by_table(a, b);
+    }
+    let mut masks = vec![0u64; rows * words];
+    for (i, &token) in pattern.iter().enumerate() {
+        let row = row_of[token as usize];
+        if row < IN_TEXT {
+            masks[row as usize * words + i / 64] |= 1 << (i % 64);
+        }
+    }
+
+    let mut v = vec![u64::MAX; words];
+    for &token in text {
+        let row = row_of[token as usize];
+        if row >= IN_TEXT {
+            continue;
+        }
+        let mask = &masks[row as usize * words..][..words];
+        let mut carry = false;
+        for (word, &m) in v.iter_mut().zip(mask) {
+            let matched = *word & m;
+            let (sum, overflow1) = word.overflowing_add(matched);
+            let (sum, overflow2) = sum.overflowing_add(u64::from(carry));
+            carry = overflow1 || overflow2;
+            *word = sum | (*word & !m);
+        }
+    }
+
+    // Bits above the pattern length start as ones and never match, so they
+    // stay ones and add no zeros.
+    v.iter().map(|word| word.count_zeros() as usize).sum()
+}
+
+/// LCS length by the classic dynamic programming table, two rows at a time.
+fn lcs_length_by_table(a: &[u32], b: &[u32]) -> usize {
+    let (rows, cols) = if a.len() >= b.len() { (a, b) } else { (b, a) };
+    let mut previous = vec![0usize; cols.len() + 1];
+    let mut current = vec![0usize; cols.len() + 1];
+    for &x in rows {
+        for (j, &y) in cols.iter().enumerate() {
             current[j + 1] = if x == y {
                 previous[j] + 1
             } else {
@@ -49,24 +150,24 @@ fn lcs_length(a: &[u32], b: &[u32]) -> usize {
         }
         std::mem::swap(&mut previous, &mut current);
     }
-    previous[b.len()]
+    previous[cols.len()]
 }
 
 /// Summary-level LCS (section 3.2 of Lin, 2004) with the clipped hit
 /// counting of ROUGE-1.5.5, as implemented by `rouge-score`.
-pub(crate) fn rouge_lsum(target: &[Vec<u32>], prediction: &[Vec<u32>], vocabulary: usize) -> Score {
-    let target_len: usize = target.iter().map(Vec::len).sum();
-    let prediction_len: usize = prediction.iter().map(Vec::len).sum();
+pub(crate) fn rouge_lsum(target: &[&[u32]], prediction: &[&[u32]], vocabulary: usize) -> Score {
+    let target_len: usize = target.iter().map(|sentence| sentence.len()).sum();
+    let prediction_len: usize = prediction.iter().map(|sentence| sentence.len()).sum();
     if target_len == 0 || prediction_len == 0 {
         return Score::ZERO;
     }
 
     let mut target_counts = vec![0usize; vocabulary];
     let mut prediction_counts = vec![0usize; vocabulary];
-    for &token in target.iter().flatten() {
+    for &token in target.iter().copied().flatten() {
         target_counts[token as usize] += 1;
     }
-    for &token in prediction.iter().flatten() {
+    for &token in prediction.iter().copied().flatten() {
         prediction_counts[token as usize] += 1;
     }
 
@@ -86,7 +187,7 @@ pub(crate) fn rouge_lsum(target: &[Vec<u32>], prediction: &[Vec<u32>], vocabular
 
 /// Tokens of `reference` that belong to an LCS with at least one candidate,
 /// in reference order.
-fn union_lcs(reference: &[u32], candidates: &[Vec<u32>]) -> Vec<u32> {
+fn union_lcs(reference: &[u32], candidates: &[&[u32]]) -> Vec<u32> {
     let mut in_union = vec![false; reference.len()];
     for candidate in candidates {
         for i in lcs_indices(reference, candidate) {
@@ -138,21 +239,94 @@ mod tests {
 
     #[test]
     fn counts_clipped_ngram_overlap() {
-        let score = rouge_n(&[1, 1, 2, 3], &[1, 2, 2], 1);
+        let score = rouge_n(&[1, 1, 2, 3], &[1, 2, 2], 1, 4);
         assert_eq!(score.precision, 2.0 / 3.0);
         assert_eq!(score.recall, 2.0 / 4.0);
     }
 
     #[test]
     fn handles_texts_shorter_than_n() {
-        assert_eq!(rouge_n(&[1], &[1], 2), Score::ZERO);
-        assert_eq!(rouge_n(&[], &[], 1), Score::ZERO);
+        assert_eq!(rouge_n(&[1], &[1], 2, 2), Score::ZERO);
+        assert_eq!(rouge_n(&[], &[], 1, 0), Score::ZERO);
     }
 
     #[test]
     fn computes_lcs_length() {
-        assert_eq!(lcs_length(&[1, 2, 3, 4], &[1, 3, 4, 5]), 3);
-        assert_eq!(lcs_length(&[1, 2], &[3, 4]), 0);
+        assert_eq!(lcs_length(&[1, 2, 3, 4], &[1, 3, 4, 5], 6), 3);
+        assert_eq!(lcs_length(&[1, 2], &[3, 4], 5), 0);
+    }
+
+    /// Deterministic pseudo-random token sequences for differential tests.
+    fn sequences(seed: u64, count: usize) -> Vec<(Vec<u32>, Vec<u32>, usize)> {
+        let mut state = seed;
+        let mut next = move |bound: u64| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state % bound
+        };
+        (0..count)
+            .map(|_| {
+                let vocabulary = 1 + next(12) as usize;
+                let mut tokens = |len: u64| -> Vec<u32> {
+                    (0..next(len))
+                        .map(|_| next(vocabulary as u64) as u32)
+                        .collect()
+                };
+                let (a, b) = (tokens(200), tokens(200));
+                (a, b, vocabulary)
+            })
+            .collect()
+    }
+
+    fn overlap_by_two_maps(a: &[u32], b: &[u32], n: usize) -> usize {
+        let counts = |tokens: &[u32]| {
+            let mut counts = std::collections::HashMap::new();
+            for ngram in tokens.windows(n) {
+                *counts.entry(ngram.to_vec()).or_insert(0usize) += 1;
+            }
+            counts
+        };
+        let (ca, cb) = (counts(a), counts(b));
+        ca.iter()
+            .map(|(k, &v)| v.min(cb.get(k).copied().unwrap_or(0)))
+            .sum()
+    }
+
+    #[test]
+    fn bit_parallel_lcs_matches_the_table() {
+        for (a, b, vocabulary) in sequences(0x9E37_79B9_7F4A_7C15, 2000) {
+            assert_eq!(
+                lcs_length(&a, &b, vocabulary),
+                lcs_length_by_table(&a, &b),
+                "{a:?} {b:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn falls_back_to_the_table_for_large_mask_tables() {
+        // 8,200 distinct shared tokens over 8,200 positions need about
+        // 1.06 million mask words, just above the limit.
+        let a: Vec<u32> = (0..8_200).collect();
+        let b: Vec<u32> = (0..8_200).rev().collect();
+        assert_eq!(lcs_length(&a, &b, 8_200), 1);
+        let disjoint: Vec<u32> = (8_200..16_400).collect();
+        assert_eq!(lcs_length(&a, &disjoint, 16_400), 0);
+    }
+
+    #[test]
+    fn ngram_overlap_matches_two_maps() {
+        for (a, b, vocabulary) in sequences(42, 1000) {
+            for n in 1..=4 {
+                let hits = match n {
+                    1 => unigram_overlap(&a, &b, vocabulary),
+                    2 => clipped_overlap(bigrams(&a), bigrams(&b)),
+                    _ => clipped_overlap(a.windows(n), b.windows(n)),
+                };
+                assert_eq!(hits, overlap_by_two_maps(&a, &b, n));
+            }
+        }
     }
 
     #[test]
@@ -165,8 +339,8 @@ mod tests {
     fn summary_level_lcs_from_the_paper() {
         // Lin (2004), section 3.2: r = w1 w2 w3 w4 w5, c1 = w1 w2 w6 w7 w8,
         // c2 = w1 w3 w8 w9 w5; the union LCS is w1 w2 w3 w5.
-        let target = [vec![1, 2, 3, 4, 5]];
-        let prediction = [vec![1, 2, 6, 7, 8], vec![1, 3, 8, 9, 5]];
+        let target: [&[u32]; 1] = [&[1, 2, 3, 4, 5]];
+        let prediction: [&[u32]; 2] = [&[1, 2, 6, 7, 8], &[1, 3, 8, 9, 5]];
         let score = rouge_lsum(&target, &prediction, 10);
         assert_eq!(score.recall, 4.0 / 5.0);
         assert_eq!(score.precision, 4.0 / 10.0);
