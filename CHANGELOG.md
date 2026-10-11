@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1 - Unreleased
+
+About 2.5 times faster on one core, with identical scores.
+
+- Tokens are written into one buffer per text and interned without a string per token;
+  stemming works in place.
+- `rouge1` counts in a dense array and `rouge2` uses packed bigram keys; `rougeL` uses
+  Hyyrö's bit-parallel LCS, with a linear-memory fallback for very large inputs.
+- The Python binding builds the result dicts in Rust.
+- Scorers pickled by 0.1.0 load correctly.
+
 ## 0.2.0 - 2026-10-11
 
 - `UnicodeTokenizer` (profile `unicode-v1`): Unicode word boundaries after NFKC and full
