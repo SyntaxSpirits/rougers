@@ -1,0 +1,38 @@
+name: Real-data benchmarks
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv venv .venv --python 3.12
+      - run: uv pip install --python .venv/bin/python -r bindings/python/benchmarks/requirements.txt
+      - name: Build local release package
+        run: |
+          source .venv/bin/activate
+          maturin develop --release -m bindings/python/Cargo.toml
+      - name: Run benchmark
+        run: |
+          .venv/bin/python bindings/python/benchmarks/compare.py \
+            --pairs 2000 --seed 1729 --repeats 3 --output benchmark-results/linux
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rouge-benchmarks-linux-${{ github.run_id }}
+          path: |
+            benchmark-results/*.json
+            benchmark-results/*.md
+          if-no-files-found: warn

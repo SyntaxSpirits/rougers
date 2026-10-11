@@ -6,8 +6,9 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 ROUGE metrics in Rust, with scores identical to Google's
-[`rouge-score`](https://pypi.org/project/rouge-score/), about 30 times faster on one core
-and over 100 times faster on all of them.
+[`rouge-score`](https://pypi.org/project/rouge-score/). On CNN/DailyMail, XSum and PubMed
+test samples it scores 11–39 times faster on one core and 40–200 times faster with all
+eight cores of an M1 Pro ([benchmarks](BENCHMARKS.md)).
 
 `rouge-score` is the ROUGE implementation behind Hugging Face `evaluate` and many
 summarization and LLM evaluation pipelines. It is written in pure Python, so scoring large
@@ -126,22 +127,15 @@ Rayon.
 
 ## Performance
 
-10,000 pairs of English text from the NLTK Gutenberg corpus, about 60 words each,
-with `rouge1`, `rouge2`, `rougeL`, `rougeLsum` and stemming. Measured on an Apple M1 Pro
-with Python 3.12:
+The benchmark uses fixed samples from the CNN/DailyMail, XSum and PubMed test sets
+with lead-sentence predictions. It checks score parity, measures serial and parallel
+scoring with and without stemming, and includes Hugging Face Evaluate's default
+bootstrap aggregation.
 
-| | seconds | pairs per second | speedup |
-|---|---:|---:|---:|
-| `rouge-score` 0.1.2 | 16.95 | 590 | 1× |
-| `rouge-score-rs` `score()` | 0.59 | 17,078 | 29× |
-| `rouge-score-rs` `score_batch()`, 8 threads | 0.12 | 83,957 | 142× |
-
-The script asserts that all three produce the same scores. To reproduce:
-
-```sh
-cd bindings/python
-python benchmarks/compare.py --pairs 10000
-```
+See [BENCHMARKS.md](https://github.com/SyntaxSpirits/rougers/blob/main/BENCHMARKS.md)
+for measured results, pinned data sources, package comparisons and reproduction
+commands. Speedups depend on summary length, requested metrics, stemming and thread
+count; timings for packages computing different scores are reported separately.
 
 ## Compatibility
 
