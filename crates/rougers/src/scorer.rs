@@ -1,5 +1,8 @@
+use std::ops::Range;
+
 use rustc_hash::FxHashMap;
 
+use crate::tokenizer::Tokens;
 use crate::{metrics, Error, RougeType, Score, Tokenizer};
 
 /// Tokenized text, ready for scoring.
@@ -125,40 +128,71 @@ impl RougeScorer {
     }
 
     pub fn score(&self, target: &str, prediction: &str) -> Scores {
-        self.score_documents(&self.document(target), &self.document(prediction))
+        self.score_tokenized(&self.tokens(target), &self.tokens(prediction))
     }
 
     pub fn score_documents(&self, target: &Document, prediction: &Document) -> Scores {
         let mut vocabulary = Vocabulary::default();
-        let target_tokens = vocabulary.intern(&target.tokens);
-        let prediction_tokens = vocabulary.intern(&prediction.tokens);
+        let target_tokens = vocabulary.intern(target.tokens.iter().map(String::as_str));
+        let prediction_tokens = vocabulary.intern(prediction.tokens.iter().map(String::as_str));
+        let target_sentences = vocabulary.intern_sentences(&target.sentences);
+        let prediction_sentences = vocabulary.intern_sentences(&prediction.sentences);
+        self.score_ids(
+            Encoded::new(&target_tokens, &target_sentences),
+            Encoded::new(&prediction_tokens, &prediction_sentences),
+            vocabulary.len(),
+        )
+    }
 
-        let lsum_sentences = self.rouge_types.contains(&RougeType::LSum).then(|| {
-            let target: Vec<Vec<u32>> = target
-                .sentences
-                .iter()
-                .map(|s| vocabulary.intern(s))
-                .collect();
-            let prediction: Vec<Vec<u32>> = prediction
-                .sentences
-                .iter()
-                .map(|s| vocabulary.intern(s))
-                .collect();
-            (target, prediction)
-        });
+    /// Tokens of `text`, with the token ranges of its non-empty lines when
+    /// `rougeLsum` is requested. A newline always separates tokens, so the
+    /// tokens of the whole text are the concatenation of those of its lines.
+    fn tokens(&self, text: &str) -> TokenizedText {
+        let mut tokens = Tokens::default();
+        let mut sentences = Vec::new();
+        if self.rouge_types.contains(&RougeType::LSum) {
+            for line in text.split('\n').filter(|line| !line.is_empty()) {
+                let start = tokens.len();
+                self.tokenizer.tokenize_into(line, &mut tokens);
+                sentences.push(start..tokens.len());
+            }
+        } else {
+            self.tokenizer.tokenize_into(text, &mut tokens);
+        }
+        TokenizedText { tokens, sentences }
+    }
 
+    fn score_tokenized(&self, target: &TokenizedText, prediction: &TokenizedText) -> Scores {
+        let mut vocabulary = Vocabulary::default();
+        let target_ids = vocabulary.intern(target.tokens.iter());
+        let prediction_ids = vocabulary.intern(prediction.tokens.iter());
+        let target_sentences = slices(&target_ids, &target.sentences);
+        let prediction_sentences = slices(&prediction_ids, &prediction.sentences);
+        self.score_ids(
+            Encoded {
+                tokens: &target_ids,
+                sentences: target_sentences,
+            },
+            Encoded {
+                tokens: &prediction_ids,
+                sentences: prediction_sentences,
+            },
+            vocabulary.len(),
+        )
+    }
+
+    fn score_ids(&self, target: Encoded, prediction: Encoded, vocabulary: usize) -> Scores {
         let scores = self
             .rouge_types
             .iter()
             .map(|&rouge_type| {
                 let score = match rouge_type {
                     RougeType::N(n) => {
-                        metrics::rouge_n(&target_tokens, &prediction_tokens, n.into())
+                        metrics::rouge_n(target.tokens, prediction.tokens, n.into(), vocabulary)
                     }
-                    RougeType::L => metrics::rouge_l(&target_tokens, &prediction_tokens),
+                    RougeType::L => metrics::rouge_l(target.tokens, prediction.tokens, vocabulary),
                     RougeType::LSum => {
-                        let (target, prediction) = lsum_sentences.as_ref().expect("interned above");
-                        metrics::rouge_lsum(target, prediction, vocabulary.len())
+                        metrics::rouge_lsum(&target.sentences, &prediction.sentences, vocabulary)
                     }
                 };
                 (rouge_type, score)
@@ -171,10 +205,10 @@ impl RougeScorer {
     /// variant separately, the target with the highest F1 (the first one on
     /// ties). Returns `None` when `targets` is empty.
     pub fn score_multi<S: AsRef<str>>(&self, targets: &[S], prediction: &str) -> Option<Scores> {
-        let prediction = self.document(prediction);
+        let prediction = self.tokens(prediction);
         let all: Vec<Scores> = targets
             .iter()
-            .map(|target| self.score_documents(&self.document(target.as_ref()), &prediction))
+            .map(|target| self.score_tokenized(&self.tokens(target.as_ref()), &prediction))
             .collect();
         best_per_type(&self.rouge_types, &all)
     }
@@ -194,19 +228,49 @@ fn best_per_type(rouge_types: &[RougeType], all: &[Scores]) -> Option<Scores> {
     Some(best)
 }
 
+struct TokenizedText {
+    tokens: Tokens,
+    sentences: Vec<Range<usize>>,
+}
+
+/// Token ids of one text and its `rougeLsum` sentences.
+struct Encoded<'a> {
+    tokens: &'a [u32],
+    sentences: Vec<&'a [u32]>,
+}
+
+impl<'a> Encoded<'a> {
+    fn new(tokens: &'a [u32], sentences: &'a [Vec<u32>]) -> Self {
+        Encoded {
+            tokens,
+            sentences: sentences.iter().map(Vec::as_slice).collect(),
+        }
+    }
+}
+
+fn slices<'a>(ids: &'a [u32], ranges: &[Range<usize>]) -> Vec<&'a [u32]> {
+    ranges.iter().map(|range| &ids[range.clone()]).collect()
+}
+
 #[derive(Default)]
 struct Vocabulary<'a> {
     ids: FxHashMap<&'a str, u32>,
 }
 
 impl<'a> Vocabulary<'a> {
-    fn intern(&mut self, tokens: &'a [String]) -> Vec<u32> {
+    fn intern(&mut self, tokens: impl Iterator<Item = &'a str>) -> Vec<u32> {
         tokens
-            .iter()
             .map(|token| {
                 let next = self.ids.len() as u32;
-                *self.ids.entry(token.as_str()).or_insert(next)
+                *self.ids.entry(token).or_insert(next)
             })
+            .collect()
+    }
+
+    fn intern_sentences(&mut self, sentences: &'a [Vec<String>]) -> Vec<Vec<u32>> {
+        sentences
+            .iter()
+            .map(|sentence| self.intern(sentence.iter().map(String::as_str)))
             .collect()
     }
 

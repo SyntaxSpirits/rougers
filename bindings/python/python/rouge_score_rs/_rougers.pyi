@@ -2,7 +2,7 @@ from typing import TypeAlias
 
 __version__: str
 
-ScoreRow: TypeAlias = tuple[str, float, float, float]
+ScoreRow: TypeAlias = tuple[float, float, float]
 
 class Scorer:
     def __init__(

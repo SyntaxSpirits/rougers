@@ -5,12 +5,13 @@ use rayon::prelude::*;
 use rougers::{Document, RougeScorer, RougeType, Scores, Tokenizer};
 use std::sync::OnceLock;
 
-type ScoreRow = (String, f64, f64, f64);
+/// Precision, recall and F1, in the order of the scorer's ROUGE types.
+type ScoreRow = (f64, f64, f64);
 
 fn rows(scores: Scores) -> Vec<ScoreRow> {
     scores
         .into_iter()
-        .map(|(rouge_type, s)| (rouge_type.to_string(), s.precision, s.recall, s.fmeasure))
+        .map(|(_, s)| (s.precision, s.recall, s.fmeasure))
         .collect()
 }
 

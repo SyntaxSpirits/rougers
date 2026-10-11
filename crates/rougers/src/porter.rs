@@ -25,24 +25,31 @@ impl<'a> Rule<'a> {
 const DOUBLE_CONSONANT: &[u8] = b"*d";
 
 /// Stems a lowercase ASCII word.
+#[cfg(test)]
 pub(crate) fn stem(word: String) -> String {
-    if let Some(stem) = irregular_form(&word) {
-        return stem.to_owned();
+    let mut w = word.into_bytes();
+    stem_in_place(&mut w);
+    String::from_utf8(w).expect("stemming keeps ASCII input ASCII")
+}
+
+/// Stems a lowercase ASCII word held in `word`.
+pub(crate) fn stem_in_place(word: &mut Vec<u8>) {
+    if let Some(stem) = std::str::from_utf8(word).ok().and_then(irregular_form) {
+        word.clear();
+        word.extend_from_slice(stem.as_bytes());
+        return;
     }
     if word.len() <= 2 {
-        return word;
+        return;
     }
-
-    let mut w = word.into_bytes();
-    step1a(&mut w);
-    step1b(&mut w);
-    step1c(&mut w);
-    step2(&mut w);
-    step3(&mut w);
-    step4(&mut w);
-    step5a(&mut w);
-    step5b(&mut w);
-    String::from_utf8(w).expect("stemming keeps ASCII input ASCII")
+    step1a(word);
+    step1b(word);
+    step1c(word);
+    step2(word);
+    step3(word);
+    step4(word);
+    step5a(word);
+    step5b(word);
 }
 
 fn irregular_form(word: &str) -> Option<&'static str> {
