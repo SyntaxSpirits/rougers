@@ -1,7 +1,9 @@
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use pyo3::types::PyType;
 use rayon::prelude::*;
 use rougers::{Document, RougeScorer, Scores, Tokenizer};
+use std::sync::OnceLock;
 
 type ScoreRow = (String, f64, f64, f64);
 
@@ -24,6 +26,19 @@ impl Scorer {
         RougeScorer::new(&rouge_types, use_stemmer)
             .map(|inner| Scorer { inner })
             .map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    fn __reduce__<'py>(slf: &Bound<'py, Self>) -> (Bound<'py, PyType>, (Vec<String>, bool)) {
+        let inner = &slf.get().inner;
+        let rouge_types = inner
+            .rouge_types()
+            .iter()
+            .map(ToString::to_string)
+            .collect();
+        (
+            slf.get_type(),
+            (rouge_types, inner.tokenizer().use_stemmer()),
+        )
     }
 
     fn score(&self, py: Python<'_>, target: &str, prediction: &str) -> Vec<ScoreRow> {
@@ -70,14 +85,29 @@ impl Scorer {
                 predictions.len()
             )));
         }
+        let score =
+            |(target, prediction): (&String, &String)| rows(self.inner.score(target, prediction));
         Ok(py.detach(|| {
-            targets
-                .par_iter()
-                .zip(predictions.par_iter())
-                .map(|(target, prediction)| rows(self.inner.score(target, prediction)))
-                .collect()
+            if thread_pool_usable() {
+                targets
+                    .par_iter()
+                    .zip(predictions.par_iter())
+                    .map(score)
+                    .collect()
+            } else {
+                targets.iter().zip(predictions.iter()).map(score).collect()
+            }
         }))
     }
+}
+
+/// The process that started Rayon's global thread pool. The pool's threads
+/// do not survive `fork()`, so a forked child that used it would wait forever;
+/// such children score on the calling thread instead.
+static POOL_OWNER: OnceLock<u32> = OnceLock::new();
+
+fn thread_pool_usable() -> bool {
+    *POOL_OWNER.get_or_init(std::process::id) == std::process::id()
 }
 
 #[pyfunction]

@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 import rouge_score_rs
@@ -71,3 +73,18 @@ def test_scorer_works_in_worker_processes():
     with ProcessPoolExecutor(max_workers=2) as pool:
         results = list(pool.map(scorer.score, ["a b", "c d"], ["a", "c"]))
     assert results == [scorer.score("a b", "a"), scorer.score("c d", "c")]
+
+
+def _score_batch_in_child(scorer):
+    return scorer.score_batch(["a b", "c d"], ["a", "c"])
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="requires fork()")
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
+def test_score_batch_works_after_fork():
+    import multiprocessing
+
+    scorer = rouge_scorer.RougeScorer(["rouge1"])
+    expected = scorer.score_batch(["a b", "c d"], ["a", "c"])
+    with multiprocessing.get_context("fork").Pool(1) as pool:
+        assert pool.apply_async(_score_batch_in_child, (scorer,)).get(timeout=30) == expected

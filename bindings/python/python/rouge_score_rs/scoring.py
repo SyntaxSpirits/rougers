@@ -9,7 +9,8 @@ class Score(collections.namedtuple("Score", ["precision", "recall", "fmeasure"])
 
 
 class AggregateScore(collections.namedtuple("AggregateScore", ["low", "mid", "high"])):
-    """Bootstrap confidence interval: ``mid`` is the mean, ``low`` and ``high`` the bounds."""
+    """Bootstrap confidence interval: ``mid`` is the median of the bootstrap
+    sample means, ``low`` and ``high`` are the interval bounds."""
 
 
 class BaseScorer(metaclass=abc.ABCMeta):

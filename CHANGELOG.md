@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.1 - 2026-10-11
+
+Python package only; the Rust crate is unchanged.
+
+- `score_batch` no longer hangs in a process forked after it ran in the parent; such
+  processes score on a single thread.
+- Pickling and `copy.deepcopy` keep the `__slots__` of subclasses.
+- Changing `use_stemmer` on a scorer's tokenizer after construction takes effect.
+- `score_multi` and `score_batch` respect a `score` method replaced on the instance.
+- `tokenize.tokenize` accepts stemmers that return `bytes`, like `rouge-score`.
+
 ## 0.1.0 - 2026-10-11
 
 First release.
