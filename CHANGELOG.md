@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.1 - Unreleased
+## 0.2.1 - 2026-10-12
 
 About 2.5 times faster on one core, with identical scores.
 
