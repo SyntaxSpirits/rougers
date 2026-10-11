@@ -51,7 +51,41 @@ results = scorer.score_batch(references, predictions)  # list of dicts, one per 
 
 Set `RAYON_NUM_THREADS` to limit the number of threads. With a custom tokenizer or
 `split_summaries=True`, and in a process forked after a parallel call, pairs are scored
-one by one.
+one by one. The built-in tokenizers described below also run in parallel.
+
+## Other languages
+
+The default tokenizer is the one from `rouge-score`: it keeps only the ASCII letters `a`–`z`
+and digits, so Russian, Arabic, Hindi or Chinese text scores zero. Two opt-in tokenizers
+cover other languages and run natively, including in `score_batch`:
+
+```python
+from rouge_score_rs import rouge_scorer, tokenizers
+
+scorer = rouge_scorer.RougeScorer(["rouge1", "rougeL"], tokenizer=tokenizers.UnicodeTokenizer())
+scorer.score("Правительство объявило новые меры.", "Объявлены новые меры правительства.")
+
+chinese = rouge_scorer.RougeScorer(["rouge1", "rougeL"], tokenizer=tokenizers.CharacterTokenizer())
+chinese.score("今天天气很好", "今天天气不错")
+```
+
+| Tokenizer | Profile | Tokens |
+|---|---|---|
+| `DefaultTokenizer` | `rouge-score` | runs of `[a-z0-9]` after lowercasing; optional Porter stemming |
+| `UnicodeTokenizer` | `unicode-v1` | words by the Unicode word boundary rules (UAX #29) that contain an alphabetic character or a number |
+| `CharacterTokenizer` | `character-v1` | grapheme clusters that contain an alphabetic character or a number |
+
+Both profiles first normalize the text: NFKC, full Unicode case folding, then NFKC again,
+so `Straße`, `STRASSE` and `ｓｔｒａｓｓｅ` give the same token.
+
+`UnicodeTokenizer` suits languages that separate words with spaces. It makes each Chinese
+or Japanese ideograph a separate token and does not split Thai, Lao, Khmer or Burmese into
+words; for those, pass your own tokenizer. `CharacterTokenizer` gives character-level
+ROUGE, a common choice for Chinese. Neither stems. Scores from these profiles are not
+comparable with `rouge-score` defaults or with other tokenization schemes, so report the
+profile name with your results. The profiles use Unicode 17.0 data from pinned
+dependencies, so their output does not depend on the platform or the Rust version, and a
+profile's behaviour will not change under the same name.
 
 ## Hugging Face Evaluate
 
@@ -72,7 +106,7 @@ It needs `pip install evaluate 'rouge-score-rs[aggregate]>=0.1.1'`.
 
 ```toml
 [dependencies]
-rougers = "0.1"
+rougers = "0.2"
 ```
 
 ```rust

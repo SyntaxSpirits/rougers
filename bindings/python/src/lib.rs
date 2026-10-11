@@ -2,7 +2,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
 use rayon::prelude::*;
-use rougers::{Document, RougeScorer, Scores, Tokenizer};
+use rougers::{Document, RougeScorer, RougeType, Scores, Tokenizer};
 use std::sync::OnceLock;
 
 type ScoreRow = (String, f64, f64, f64);
@@ -22,22 +22,31 @@ struct Scorer {
 #[pymethods]
 impl Scorer {
     #[new]
-    fn new(rouge_types: Vec<String>, use_stemmer: bool) -> PyResult<Self> {
-        RougeScorer::new(&rouge_types, use_stemmer)
+    #[pyo3(signature = (rouge_types, use_stemmer, profile = "rouge-score"))]
+    fn new(rouge_types: Vec<String>, use_stemmer: bool, profile: &str) -> PyResult<Self> {
+        let tokenizer = tokenizer(profile, use_stemmer)?;
+        rouge_types
+            .iter()
+            .map(|name| name.parse::<RougeType>())
+            .collect::<Result<Vec<_>, _>>()
+            .and_then(|rouge_types| RougeScorer::with_tokenizer(rouge_types, tokenizer))
             .map(|inner| Scorer { inner })
             .map_err(|e| PyValueError::new_err(e.to_string()))
     }
 
-    fn __reduce__<'py>(slf: &Bound<'py, Self>) -> (Bound<'py, PyType>, (Vec<String>, bool)) {
+    fn __reduce__<'py>(
+        slf: &Bound<'py, Self>,
+    ) -> (Bound<'py, PyType>, (Vec<String>, bool, &'static str)) {
         let inner = &slf.get().inner;
         let rouge_types = inner
             .rouge_types()
             .iter()
             .map(ToString::to_string)
             .collect();
+        let tokenizer = inner.tokenizer();
         (
             slf.get_type(),
-            (rouge_types, inner.tokenizer().use_stemmer()),
+            (rouge_types, tokenizer.use_stemmer(), tokenizer.profile()),
         )
     }
 
@@ -110,9 +119,21 @@ fn thread_pool_usable() -> bool {
     *POOL_OWNER.get_or_init(std::process::id) == std::process::id()
 }
 
+fn tokenizer(profile: &str, use_stemmer: bool) -> PyResult<Tokenizer> {
+    match profile {
+        "rouge-score" => Ok(Tokenizer::new(use_stemmer)),
+        "unicode-v1" => Ok(Tokenizer::unicode()),
+        "character-v1" => Ok(Tokenizer::character()),
+        _ => Err(PyValueError::new_err(format!(
+            "unknown tokenizer profile: {profile}"
+        ))),
+    }
+}
+
 #[pyfunction]
-fn tokenize(text: &str, use_stemmer: bool) -> Vec<String> {
-    Tokenizer::new(use_stemmer).tokenize(text)
+#[pyo3(signature = (text, use_stemmer, profile = "rouge-score"))]
+fn tokenize(text: &str, use_stemmer: bool, profile: &str) -> PyResult<Vec<String>> {
+    Ok(tokenizer(profile, use_stemmer)?.tokenize(text))
 }
 
 #[pymodule]
