@@ -9,7 +9,7 @@ edition = "2021"
 rust-version = "1.88"
 license = "Apache-2.0"
 repository = "https://github.com/SyntaxSpirits/rougers"
-homepage = "https://github.com/SyntaxSpirits/rougers"
+homepage = "https://syntaxspirits.dev/rougers"
 
 [profile.release]
 lto = "thin"

@@ -26,6 +26,7 @@ aggregate = ["numpy"]
 sentences = ["nltk"]
 
 [project.urls]
+Homepage = "https://syntaxspirits.dev/rougers"
 Repository = "https://github.com/SyntaxSpirits/rougers"
 Issues = "https://github.com/SyntaxSpirits/rougers/issues"
 
