@@ -1,9 +1,11 @@
-use pyo3::exceptions::PyValueError;
+use pyo3::exceptions::{PyMemoryError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyString, PyTuple, PyType};
 use pyo3::{PyTraverseError, PyVisit};
 use rayon::prelude::*;
 use rougers::{Document, RougeScorer, RougeType, Scores, Tokenizer};
+use std::collections::TryReserveError;
+use std::panic::{self, AssertUnwindSafe};
 use std::sync::OnceLock;
 
 #[pyclass(frozen, module = "rouge_score_rs._rougers")]
@@ -111,7 +113,7 @@ impl Scorer {
         target: &str,
         prediction: &str,
     ) -> PyResult<Bound<'py, PyDict>> {
-        let scores = py.detach(|| self.inner.score(target, prediction));
+        let scores = py.detach(|| allocating(|| self.inner.score(target, prediction)))?;
         self.to_dict(py, scores)
     }
 
@@ -131,7 +133,8 @@ impl Scorer {
             tokens: prediction_tokens,
             sentences: prediction_sentences,
         };
-        self.to_dict(py, self.inner.score_documents(&target, &prediction))
+        let scores = allocating(|| self.inner.score_documents(&target, &prediction))?;
+        self.to_dict(py, scores)
     }
 
     fn score_multi<'py>(
@@ -140,7 +143,7 @@ impl Scorer {
         targets: Vec<String>,
         prediction: &str,
     ) -> PyResult<Option<Bound<'py, PyDict>>> {
-        py.detach(|| self.inner.score_multi(&targets, prediction))
+        py.detach(|| allocating(|| self.inner.score_multi(&targets, prediction)))?
             .map(|scores| self.to_dict(py, scores))
             .transpose()
     }
@@ -160,20 +163,33 @@ impl Scorer {
         }
         let score = |(target, prediction): (&String, &String)| self.inner.score(target, prediction);
         let all: Vec<Scores> = py.detach(|| {
-            if thread_pool_usable() {
-                targets
-                    .par_iter()
-                    .zip(predictions.par_iter())
-                    .map(score)
-                    .collect()
-            } else {
-                targets.iter().zip(predictions.iter()).map(score).collect()
-            }
-        });
+            allocating(|| {
+                if thread_pool_usable() {
+                    targets
+                        .par_iter()
+                        .zip(predictions.par_iter())
+                        .map(score)
+                        .collect()
+                } else {
+                    targets.iter().zip(predictions.iter()).map(score).collect()
+                }
+            })
+        })?;
         all.into_iter()
             .map(|scores| self.to_dict(py, scores))
             .collect()
     }
+}
+
+/// Runs a scoring call, raising `MemoryError` when the `rougeLsum` table for a
+/// pair of very long sentences cannot be allocated.
+fn allocating<T>(score: impl FnOnce() -> T) -> PyResult<T> {
+    panic::catch_unwind(AssertUnwindSafe(score)).map_err(|payload| {
+        match payload.downcast::<TryReserveError>() {
+            Ok(error) => PyMemoryError::new_err(error.to_string()),
+            Err(payload) => panic::resume_unwind(payload),
+        }
+    })
 }
 
 /// The process that started Rayon's global thread pool. The pool's threads
@@ -202,7 +218,8 @@ fn tokenize(text: &str, use_stemmer: bool, profile: &str) -> PyResult<Vec<String
     Ok(tokenizer(profile, use_stemmer)?.tokenize(text))
 }
 
-#[pymodule]
+/// Scoring is not tested from threads running without the GIL, so the module keeps it.
+#[pymodule(gil_used = true)]
 mod _rougers {
     #[pymodule_export]
     use super::{tokenize, Scorer};

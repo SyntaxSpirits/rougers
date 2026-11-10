@@ -137,6 +137,17 @@ for measured results, pinned data sources, package comparisons and reproduction
 commands. Speedups depend on summary length, requested metrics, stemming and thread
 count; timings for packages computing different scores are reported separately.
 
+Memory for `rougeL` grows linearly with text length (at most 8 MiB of bit masks, then a
+two-row table). `rougeLsum` reproduces the backtracking of `rouge-score` and needs, like
+it, a full table of (m + 1) × (n + 1) counters for every pair of a target sentence of m
+tokens and a prediction sentence of n tokens, at 4 bytes per counter. Unless
+`split_summaries=True`, sentences are lines, so a long text without newlines is a single
+sentence: two of 20,000 tokens need about 1.6 GB, and `score_batch` holds one such table
+per thread at the same time. Splitting a batch into chunks does not lower this peak; for
+such inputs, limit the threads with `RAYON_NUM_THREADS` or score the longest pairs one at a
+time with `score`. A table that cannot be allocated raises `MemoryError` in Python; in
+Rust, scoring panics with a `std::collections::TryReserveError` payload.
+
 ## Compatibility
 
 The test suite compares `rouge-score-rs` with `rouge-score` and fails on any difference
@@ -159,6 +170,9 @@ Known differences:
 - `BootstrapAggregator` needs NumPy (`pip install 'rouge-score-rs[aggregate]'`) and
   `split_summaries=True` needs NLTK (`pip install 'rouge-score-rs[sentences]'`).
   Without them, `rouge-score-rs` has no Python dependencies.
+
+Wheels use the stable ABI of CPython 3.9 and later. Free-threaded CPython such as 3.14t
+builds the package from the sdist and re-enables the GIL when it is imported.
 
 ## Development
 

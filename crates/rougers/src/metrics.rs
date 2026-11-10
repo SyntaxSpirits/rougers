@@ -205,7 +205,7 @@ fn union_lcs(reference: &[u32], candidates: &[&[u32]]) -> Vec<u32> {
 /// `rouge-score` so that the summary-level union matches it exactly.
 fn lcs_indices(reference: &[u32], candidate: &[u32]) -> Vec<usize> {
     let cols = candidate.len() + 1;
-    let mut table = vec![0u32; (reference.len() + 1) * cols];
+    let mut table = lcs_table(reference.len() + 1, cols);
     for (i, &r) in reference.iter().enumerate() {
         for (j, &c) in candidate.iter().enumerate() {
             table[(i + 1) * cols + j + 1] = if r == c {
@@ -231,6 +231,18 @@ fn lcs_indices(reference: &[u32], candidate: &[u32]) -> Vec<usize> {
     }
     indices.reverse();
     indices
+}
+
+/// A zeroed `rows` × `cols` table. If it cannot be allocated, this panics with
+/// the `TryReserveError` as the payload instead of aborting the process.
+fn lcs_table(rows: usize, cols: usize) -> Vec<u32> {
+    let len = rows.saturating_mul(cols);
+    let mut table = Vec::new();
+    if let Err(error) = table.try_reserve_exact(len) {
+        std::panic::panic_any(error);
+    }
+    table.resize(len, 0);
+    table
 }
 
 #[cfg(test)]
@@ -333,6 +345,14 @@ mod tests {
     fn backtracks_like_rouge_score() {
         assert_eq!(lcs_indices(&[1, 2, 1], &[2, 1, 1]), [0, 2]);
         assert_eq!(lcs_indices(&[1, 2], &[2, 1]), [0]);
+    }
+
+    #[test]
+    fn oversized_lcs_table_panics_with_try_reserve_error() {
+        let payload = std::panic::catch_unwind(|| lcs_table(usize::MAX, 2)).unwrap_err();
+        assert!(payload
+            .downcast_ref::<std::collections::TryReserveError>()
+            .is_some());
     }
 
     #[test]

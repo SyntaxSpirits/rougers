@@ -34,7 +34,7 @@ jobs:
           path: dist
 
   macos:
-    runs-on: macos-14
+    runs-on: macos-15
     strategy:
       matrix:
         target: [x86_64, aarch64]
@@ -75,9 +75,44 @@ jobs:
           name: sdist
           path: dist
 
+  verify:
+    needs: [linux, sdist]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [wheel, sdist]
+        python: ["3.9", "3.15"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.package == 'wheel' && 'wheels-linux-x86_64-auto' || 'sdist' }}
+          path: ${{ runner.temp }}/dist
+      - uses: dtolnay/rust-toolchain@stable
+        if: matrix.package == 'sdist'
+      - uses: astral-sh/setup-uv@v6
+      - name: Install into a clean environment outside the checkout
+        env:
+          PYTHON: ${{ matrix.python }}
+        run: |
+          uv export --project bindings/python --frozen --only-group dev --no-emit-project \
+            --no-hashes --output-file "$RUNNER_TEMP/requirements.txt"
+          cp -r bindings/python/tests "$RUNNER_TEMP/tests"
+          cd "$RUNNER_TEMP"
+          uv venv --python "$PYTHON" venv
+          uv pip install --python venv -r requirements.txt
+          uv pip install --python venv dist/*
+      - name: Run the parity tests against the installed package
+        working-directory: ${{ runner.temp }}
+        run: |
+          venv/bin/python -c "import rouge_score, rouge_score_rs; print(rouge_score_rs.__file__)"
+          venv/bin/python -c "import nltk; nltk.download('punkt_tab', quiet=True, raise_on_error=True)"
+          venv/bin/python -m pytest -p no:cacheprovider tests/test_parity.py
+
   pypi:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [tests, linux, macos, windows, sdist]
+    needs: [tests, linux, macos, windows, sdist, verify]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
