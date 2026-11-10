@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+Scores are unchanged.
+
+- A `rougeLsum` table too large to allocate, for a pair of very long sentences, raises
+  `MemoryError` instead of aborting the process; in Rust, scoring panics with a
+  `TryReserveError` payload. The README gives the memory bound.
+- On free-threaded CPython, importing the package re-enables the GIL, since free-threaded
+  builds are not yet published.
+- CI also tests Python 3.14, 3.15 and free-threaded 3.14. Releases install the built wheel
+  and the sdist into clean environments and run the parity tests before publishing.
+
 ## 0.2.1 - 2026-10-12
 
 About 2.5 times faster on one core, with identical scores.

@@ -1,4 +1,7 @@
 import os
+import subprocess
+import sys
+import sysconfig
 
 import pytest
 
@@ -88,6 +91,22 @@ def test_score_batch_works_after_fork():
     expected = scorer.score_batch(["a b", "c d"], ["a", "c"])
     with multiprocessing.get_context("fork").Pool(1) as pool:
         assert pool.apply_async(_score_batch_in_child, (scorer,)).get(timeout=30) == expected
+
+
+@pytest.mark.skipif(
+    not sysconfig.get_config_var("Py_GIL_DISABLED"), reason="requires free-threaded Python"
+)
+def test_import_enables_the_gil_on_free_threaded_python():
+    env = {name: value for name, value in os.environ.items() if name != "PYTHON_GIL"}
+    code = "import sys, rouge_score_rs; print(sys._is_gil_enabled())"
+    result = subprocess.run(
+        [sys.executable, "-W", "ignore", "-c", code],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert result.stdout.strip() == "True"
 
 
 # A scorer pickled by rouge-score-rs 0.1.0: RougeScorer(["rouge1", "rougeL"], use_stemmer=True).
